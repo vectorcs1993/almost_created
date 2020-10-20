@@ -6,7 +6,7 @@ abstract class WorkObject {
   PImage sprite;
   String name;
   Timer timer; 
-  static final int CONTAINER = 0, TERMINAL = 14, WORKBENCH=16, DEVELOPBENCH =17, FOUNDDRY =18;
+  static final int CONTAINER = 0, TERMINAL = 14, WORKBENCH=16, DEVELOPBENCH =17, FOUNDDRY =18, SAW_MACHINE =19;
 
 
   WorkObject(int id) {

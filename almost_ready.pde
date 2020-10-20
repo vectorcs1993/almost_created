@@ -1,8 +1,5 @@
 import de.bezier.guido.*;
 
-
-
-
 int _sizeX=800;
 int _sizeY=600;
 World world;
@@ -22,10 +19,7 @@ color euro= color(213, 172, 129);
 
 
 void settings() {
-
-
   size(_sizeX, _sizeY, P2D);
-  
   smooth(2);
   PJOGL.setIcon("data/sprites/icon.png");
  
@@ -52,7 +46,6 @@ void setup() {
   world = new World(192, 32, 320, 320);
 
   setupInterface();
-   booster = new UiBooster();
 }
 
 

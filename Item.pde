@@ -8,7 +8,7 @@ class Item {
   protected final int weight;
   protected float cost;
   static final int STEEL=0, COPPER=1, OIL=2, STONE=3, WOOD=4, PLATE_STEEL=5, PLATE_COPPER=6, RUBBER=7, BLOCK_STONE=8, BLOCK_STEEL=9, 
-    BLOCK_PLASTIC=10, KIT_REPAIR=11, ALL=0;
+    BLOCK_PLASTIC=10, KIT_REPAIR=11,   ALL=0;
   protected ComponentList reciept;
 
   Item (int id) {

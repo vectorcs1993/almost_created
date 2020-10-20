@@ -277,7 +277,11 @@ class World extends ScaleActiveObject {
         for (int iy=0; iy<sizeY; iy++) {
           pushMatrix();
           translate(ix*size_grid, iy*size_grid);
+          pushStyle();
+          if (ix==0 || ix==sizeX-1 || iy==0 || iy==sizeY-1)
+            tint(white, 100);
           image(floor, 0, 0);
+          popStyle();
           WorkObject current = object[ix][iy];
           if (current!=null) 
             current.draw();

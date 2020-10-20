@@ -85,6 +85,8 @@ class Database {
       return new DevelopBench(obj.id);
     case WorkObject.FOUNDDRY: 
       return new Workbench(obj.id);
+        case WorkObject.SAW_MACHINE: 
+      return new Workbench(obj.id);
     }
     return null;
   }

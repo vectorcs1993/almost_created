@@ -1,4 +1,5 @@
-SimpleButton buttonCreate, buttonCreate1, buttonCreate10, buttonCreateBack1, buttonCreateBack10, buttonCancelProduct, buttonOpenOrder, buttonCloseOrder;
+SimpleButton buttonCreate, buttonCreate1, buttonCreate10, buttonCreateBack1, buttonCreateBack10, buttonCancelProduct, buttonOpenOrder, buttonCloseOrder, buttonCancelOrder,
+  buttonPause, buttonStart;
 RadioButton menuMain, menuTasker, menuContainer, menuOrders;
 SimpleRadioButton buttonInfo, buttonManager, buttonMaintenance, buttonCargo, buttonTask; 
 Listbox buildings, productsList, items, orders;
@@ -8,7 +9,7 @@ WindowLabel wMessage;
 void setupInterface() {
   textConsole = new Text (192, 352, width-192-10, height-352, white, color(60));
 
-  buildings=new Listbox(512, 63, 256, 288, Listbox.OBJECTS);
+  buildings=new Listbox(512, 63, 286, 288, Listbox.OBJECTS);
   buildings.loadObjects(data.objects);
 
   items=new Listbox(194, 32, 384, 320, Listbox.ITEMS);
@@ -45,7 +46,7 @@ void setupInterface() {
   menuOrders.addButtons(new SimpleRadioButton [] {new SimpleRadioButton("новые", "showAllOrders", resetScroll), 
     new SimpleRadioButton("открытые", "showOpenOrders", resetScroll), 
     new SimpleRadioButton("закрытые", "showCloseOrders", resetScroll), 
-    new SimpleRadioButton("проваленные", "showFailOrders", resetScroll)});
+    new SimpleRadioButton("отмененные", "showFailOrders", resetScroll)});
 
 
   //создание кнопок 
@@ -88,6 +89,18 @@ void setupInterface() {
           terminal.progress=0;
         }
       }
+    }
+  }
+  );
+  buttonPause = new SimpleButton(582, 0, 96, 32, "пауза", new Runnable() {
+    public void run() {
+      world.pause=true;
+    }
+  }
+  );
+  buttonStart = new SimpleButton(680, 0, 96, 32, "старт", new Runnable() {
+    public void run() {
+      world.pause=false;
     }
   }
   );
@@ -144,9 +157,12 @@ void setupInterface() {
   );
   buttonOpenOrder = new SimpleButton(570, 380, 193, 32, "открыть заказ", new Runnable() {
     public void run() {
-      Order order = world.orders.getOrder(orders.select.id);
-      world.company.opened.add(order);
-      world.orders.remove(order);
+      if (world.company.opened.size()<world.company.ordersOpenLimited) {
+        Order order = world.orders.getOrder(orders.select.id);
+        world.company.opened.add(order);
+        world.orders.remove(order);
+      } else
+        wMessage = new WindowLabel("превышен лимит открытых заказов");
     }
   }
   );
@@ -165,10 +181,22 @@ void setupInterface() {
     }
   }
   );
-  //  components.add(buttonCreate, buttonCreate1, buttonCreate10);
+  buttonCancelOrder = new SimpleButton(570, 414, 193, 32, "отменить заказ", new Runnable() {
+    public void run() {
+      Order order = world.company.opened.getOrder(orders.select.id);
+      if (order!=null) {
+          world.company.opened.remove(order);
+          world.company.failed.add(order);
+          float forfeit = order.cost*0.05;
+          world.company.money-=forfeit;
+          wMessage = new WindowLabel("заказ не выполнен, штраф: "+forfeit+" $");
+        } 
+    }
+  }
+  );
 }
 
-ArrayList <ScaleActiveObject> components = new ArrayList <ScaleActiveObject>();
+
 
 
 
@@ -182,6 +210,7 @@ void updateInterface() {
   buttonCancelProduct.setActive(false);
   buttonOpenOrder.setActive(false);
   buttonCloseOrder.setActive(false);
+  buttonCancelOrder.setActive(false);
   textConsole.setActive(false);
   menuContainer.setActive(false);
   menuOrders.setActive(false);
@@ -193,7 +222,13 @@ void updateInterface() {
 
   menuMain.control();
 
-
+  if (world.pause) {
+    buttonStart.setActive(true);
+    buttonPause.setActive(false);
+  } else {
+    buttonStart.setActive(false);
+    buttonPause.setActive(true);
+  }
   fill(white);
   if (menuMain.select.event.equals("showObjects")) {
     world.room.setActiveLabels(true);
@@ -256,8 +291,6 @@ void updateInterface() {
         String event= menuContainer.select.event;
         Container container = (Container) object;
         if (event.equals("getCargo")) {
-
-
           if (container.items.size()>0) 
             productsList.loadItems(container.items);
           else {
@@ -295,8 +328,10 @@ void updateInterface() {
       textConsole.loadText(orders.getSelectInfo());
       if (menuOrders.select.event.equals("showAllOrders"))
         buttonOpenOrder.setActive(true);
-      else if (menuOrders.select.event.equals("showOpenOrders"))
+      else if (menuOrders.select.event.equals("showOpenOrders")) {
         buttonCloseOrder.setActive(true);
+        buttonCancelOrder.setActive(true);
+      }
     } else
       textConsole.loadText(data.label.get("selected_order"));
     textConsole.setActive(true);
@@ -456,8 +491,10 @@ class SimpleButton extends ScaleActiveObject {
     level=0;
   }
   void mousePressed () {
-    if (script!=null)
-      script.run();
+    if (isActiveSelect()) {
+      if (script!=null)
+        script.run();
+    }
   }
   void draw () {
     pushMatrix();
@@ -675,7 +712,7 @@ class Listbox extends ScaleActiveObject {
         }
         description+=", стоимость: "+dataObj.cost+" $";
       }
-      return data.label.get("description")+": "+description;
+      return description;
     } else 
     return data.label.get("no_text");
   }
@@ -811,7 +848,7 @@ class WindowLabel extends ActiveElement {
   SimpleButton buttonOk;
 
   WindowLabel (String message) {
-    super(200, 200, 400, 200);
+    super(150, 200, 500, 200);
     this.message=message;
     world.input=false;
     world.pause=true;
@@ -852,7 +889,8 @@ class WindowLabel extends ActiveElement {
 }
 
 void showScaleText(String text, float x, float y) {
-  pushMatrix();   
+  pushMatrix(); 
+  fill(white);
   translate(x*getScaleX(), y*getScaleY());
   scale(getScaleX(), getScaleY());
   text(text, 0, 0);
