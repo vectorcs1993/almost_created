@@ -43,14 +43,14 @@ class World extends ScaleActiveObject {
       if (orders.isEmpty() || orders.size()<company.ordersLimited) {
         Item item = new Item(data.items.getRandom(Item.PRODUCTS).id); //определяет изделие
         int scope_one =int(item.scope_of_operation+item.reciept.getScopeTotal());
-        int count = 1;//1+int(random(1000*world.company.getLevel())/scope_one); //определяет количество  
+        int count = 1+int(random(1000*world.company.getLevel())/scope_one); //определяет количество  
         int scope_total = count*scope_one;
         int deadLine = 2+int(date.getDays(scope_total));//определяет срок на изготовление 2 дня - минималка
-        float cost_one = item.reciept.getCostTotal();  //определяет стоимость предмета 
+        float cost_one = item.cost*item.reciept.getCostTotal();  //определяет стоимость предмета 
         float cost = count*cost_one;  //определяет общую стоимость объектов 
-        int exp=scope_one/world.company.getLevel();
-      //  println(item.name+":"+item.reciept.getResources().getNames());
-        orders.add(new Order(allOrders.getLastId(), item, count, cost, deadLine, exp));
+        int exp=scope_one/world.company.getLevel();  
+        if (cost<=1000*world.company.getLevel())
+          orders.add(new Order(allOrders.getLastId(), item, count, cost, deadLine, exp));
       }
       for (Order order : orders)
         order.update();

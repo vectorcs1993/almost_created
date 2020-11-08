@@ -8,7 +8,7 @@ WindowLabel wMessage;
 
 
 void setupInterface() {
-  textConsole = new Text (192, 362, width-192-10, height-342, white, color(60));
+  textConsole = new Text (192, 362, width-192-10, height-365, white, color(60));
 
   buildings=new Listbox(512, 63, 286, 288, Listbox.OBJECTS);
   buildings.loadObjects(data.objects);
@@ -902,6 +902,7 @@ class Text extends ScaleActiveObject {
     texts.clear();
   }
   public void loadText(String text) {
+    int prevLine = getTextNumStr();
     this.text=text;
     texts.clear();
     text+=" ";
@@ -925,8 +926,8 @@ class Text extends ScaleActiveObject {
         current_str++;
       }
     }
-    //  if (current_str<prevLine)  узнать назначение и убрать
-    //  yT=0;
+    //if (current_str<prevLine) 
+      //yT=0;
   }
   protected float getTextHeight() {
     return getTextNumStr()*grid_size*getScaleY();
