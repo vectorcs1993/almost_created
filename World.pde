@@ -5,7 +5,7 @@ class World extends ScaleActiveObject {
   float size_grid;
   Company company;
   Database.DataObject newObj;
-  OrderList orders;
+  OrderList orders, allOrders;
   boolean pause, input;
   int level;
   Date date;
@@ -16,6 +16,7 @@ class World extends ScaleActiveObject {
     size_grid=32;
     company=new Company ("Robocraft");
     orders = new OrderList();
+    allOrders = new OrderList();
     date = new Date (1, 5, 2019);
     input=true;
     level=0;
@@ -28,34 +29,42 @@ class World extends ScaleActiveObject {
   }
   public void update() {
     if (!pause) {
+      company.update();
       room.update();
       for (Timer part : timers)   //отсчет таймеров
         part.tick();
       date.tick();
       //добавление новых заказов
-      OrderList allOrders = new OrderList();
+      allOrders.clear();
       allOrders.addAll(orders);
       allOrders.addAll(company.opened);
       allOrders.addAll(company.closed);
       allOrders.addAll(company.failed);
       if (orders.isEmpty() || orders.size()<company.ordersLimited) {
-        Item item = new Item(data.items.getRandom(Item.ALL).id);
-        int count = (int)random(100)+1;
-        int time = (int)random(5)+1;
-        float cost = count*(item.cost+random(50));
-        orders.add(new Order(allOrders.getLastId(), item, count, cost, time));
+        Item item = new Item(data.items.getRandom(Item.PRODUCTS).id); //определяет изделие
+        int scope_one =int(item.scope_of_operation+item.reciept.getScopeTotal());
+        int count = 1;//1+int(random(1000*world.company.getLevel())/scope_one); //определяет количество  
+        int scope_total = count*scope_one;
+        int deadLine = 2+int(date.getDays(scope_total));//определяет срок на изготовление 2 дня - минималка
+        float cost_one = item.reciept.getCostTotal();  //определяет стоимость предмета 
+        float cost = count*cost_one;  //определяет общую стоимость объектов 
+        int exp=scope_one/world.company.getLevel();
+      //  println(item.name+":"+item.reciept.getResources().getNames());
+        orders.add(new Order(allOrders.getLastId(), item, count, cost, deadLine, exp));
       }
-
       for (Order order : orders)
         order.update();
-
-
       OrderList failed = company.opened.getFailOrders(date);
       if (!failed.isEmpty()) {
+        String ordersNames =failed.getLabels();
+        float cost=0;
         for (Order order : failed) {
           company.opened.remove(order);
+          cost+=order.cost;
           company.failed.add(order);
         }
+        cost = getDecimalFormat(cost);
+        wMessage = new WindowLabel("следующие заказы просрочились: "+ordersNames+" на сумму: "+cost+" $");
       }
     }
   }
@@ -66,6 +75,8 @@ class World extends ScaleActiveObject {
       translate(x*getScaleX(), y*getScaleY());
       scale(getScaleX(), getScaleY()); 
       room.draw();
+      if (menuMain.select.event.equals("showBuildings"))
+        room.drawGrid();
       if (!buildings.isActive() || buildings.select==null) 
         newObj=null;
       if (newObj!=null && hover && isActiveSelect()) {
@@ -84,6 +95,9 @@ class World extends ScaleActiveObject {
       popMatrix();
     }
   }
+
+
+
   public String getObjectInfo() {
     if (room.isHoverLabel()) {
       WorkLabel label = room.getHoverLabel();
@@ -112,8 +126,13 @@ class World extends ScaleActiveObject {
         int _y=getAbsCoordY();
         if (mouseButton==LEFT) {
           if (menuMain.select.event.equals("showObjects")) {
-            if (room!=null) 
-              room.currentObject=getObject();
+            if (room!=null) {
+              WorkObject object = getObject();
+              if (object!=null) 
+                room.currentObject=object;
+              else
+                room.currentObject=null;
+            }
           } else if (menuMain.select.event.equals("showBuildings")) {
             if (buildings.select!=null) {
               Database.DataObject newObj = data.objects.getId(buildings.select.id);
@@ -155,14 +174,12 @@ class World extends ScaleActiveObject {
       }
       object[3][3] = new Terminal(WorkObject.TERMINAL);
       object[4][4] = new Workbench(WorkObject.WORKBENCH);
+      object[7][4] = new Workbench(WorkObject.SAW_MACHINE);
+      object[7][5] = new Workbench(WorkObject.WORKSHOP_MECHANICAL);
       object[5][4] = new DevelopBench(WorkObject.DEVELOPBENCH);
       object[6][4] = new Container(0);
-      ((Container)object[6][4]).items.add(new Item(Item.STEEL));
-      ((Container)object[6][4]).items.add(new Item(Item.STEEL));
-      ((Container)object[6][4]).items.add(new Item(Item.PLATE_STEEL));
-      ((Container)object[6][4]).items.add(new Item(Item.STONE));
     }
-
+    //return NotById
     float [] getCoordObject(WorkObject object) {
       for (int ix=0; ix<sizeX; ix++) {
         for (int iy=0; iy<sizeY; iy++) {
@@ -174,7 +191,7 @@ class World extends ScaleActiveObject {
         }
       }
       return null;
-    }
+    }  
     public Terminal getObjectAtLabel(WorkLabel label) {
       for (WorkObject part : getAllObjects().getTerminals()) {
         Terminal terminal = (Terminal)part; 
@@ -193,6 +210,20 @@ class World extends ScaleActiveObject {
         }
       }
     }
+
+    public void removeObject(WorkObject object) {
+      for (int ix=0; ix<sizeX; ix++) {
+        for (int iy=0; iy<sizeY; iy++) {
+          if (this.object[ix][iy]==object) {
+            this.object[ix][iy]=null;
+            if (currentObject==object)
+              currentObject=null;
+            break;
+          }
+        }
+      }
+    }
+
     public void setActiveLabels(boolean active) {
       for (WorkLabel part : getAllLabels()) 
         part.setActive(active);
@@ -270,7 +301,20 @@ class World extends ScaleActiveObject {
       }
       return objects;
     }
-
+    private void drawGrid() {
+      for (int ix=0; ix<sizeX; ix++) {
+        for (int iy=0; iy<sizeY; iy++) {
+          pushMatrix();
+          translate(ix*size_grid, iy*size_grid);
+          pushStyle();
+          noFill();
+          stroke(white);
+          rect(0, 0, size_grid, size_grid);
+          popStyle();
+          popMatrix();
+        }
+      }
+    }
 
     public void draw() {
       for (int ix=0; ix<sizeX; ix++) {

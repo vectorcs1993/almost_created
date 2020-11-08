@@ -4,9 +4,8 @@ Database data;
 PApplet context = this;
 
 class Database {
-  public final  DatabaseObjectList items = new  DatabaseObjectList();
-  public final DatabaseObjectList objects = new  DatabaseObjectList();
-  StringDict label = new StringDict();
+  public final  DatabaseObjectList items = new  DatabaseObjectList(), objects = new  DatabaseObjectList();
+  StringDict label = new StringDict(), helpMessages = new StringDict(); 
   SQLite db;
 
   Database () {
@@ -18,6 +17,17 @@ class Database {
         label.set(keyIndex, part.getString(keyIndex));
       }
     }
+    strings= loadJSONArray("data/languages/help_ru.json");      
+    for (int i = 0; i < strings.size(); i++) {
+      JSONObject part = strings.getJSONObject(i);
+      for (java.lang.Object s : part.keys()) {
+        String keyIndex = s.toString();
+        helpMessages.set(keyIndex, part.getString(keyIndex));
+      }
+    }
+
+
+
     db = new SQLite(context, "data/objects.db" );  //открывает файл базы данных
     db.setDebug(false);
     loadDatabase(items, "items");
@@ -35,9 +45,31 @@ class Database {
       }
       return null;
     }
+    public DatabaseObjectList getProducts() {
+      DatabaseObjectList list = new DatabaseObjectList();
+      for (DataObject object : this) {
+        if (object.reciept!=null) 
+          list.add(object);
+      }
+      return list;
+    }
     public DataObject getRandom(int filter) {
-      int random = constrain(int(random(this.size())), 0, this.size()-1);
-      return this.get(random);
+      DatabaseObjectList list = new DatabaseObjectList();
+      if (filter==Item.PRODUCTS) 
+        list = this.getProducts();
+      else 
+      list = this;
+      int random = constrain(int(random(list.size())), 0, list.size()-1);
+      return list.get(random);
+    }
+
+    public void putPool() {
+      for (DataObject object : this) {
+        if (object.reciept==null) {
+          object.pool+=int(object.maxPool/20);
+          object.pool=constrain(object.pool, 50, object.maxPool);
+        }
+      }
     }
   }
 
@@ -47,18 +79,23 @@ class Database {
     protected final String name;
     protected String description;
     protected ComponentList reciept, products;
-    protected int scope_of_operation, count_operation, weight, complexity;
-    protected float cost, cost_develop;
+    protected int scope_of_operation, count_operation, weight, pool, maxPool;
+    protected float cost;
     DataObject(int id, String name, PImage sprite) {
       this.id=id;
       this.name=name;
       this.sprite=sprite;
       description="";
-      count_operation=weight=scope_of_operation=1;
-      cost=cost_develop=0;
+      count_operation=weight=1;
+      scope_of_operation=10;
+      cost=0;
       reciept=null;
       products=new ComponentList(items);
     }
+    float getCostForPool() {
+      return cost*maxPool/pool;
+    }
+
     public void draw() {
       image(sprite, world.getAbsCoordX()*world.size_grid, world.getAbsCoordY()*world.size_grid);
     }
@@ -68,6 +105,15 @@ class Database {
       if (!products.hasValue(id))
         products.append(id);
     }
+    
+    float getCostDevelop() {
+      if (reciept!=null) 
+        return (reciept.getScopeTotal()*10)/2; 
+      else 
+      return 0;
+    }
+    
+    
   }
 
 
@@ -85,7 +131,11 @@ class Database {
       return new DevelopBench(obj.id);
     case WorkObject.FOUNDDRY: 
       return new Workbench(obj.id);
-        case WorkObject.SAW_MACHINE: 
+    case WorkObject.SAW_MACHINE: 
+      return new Workbench(obj.id);
+    case WorkObject.STONE_CARVER: 
+      return new Workbench(obj.id);
+    case WorkObject.WORKSHOP_MECHANICAL: 
       return new Workbench(obj.id);
     }
     return null;
@@ -118,9 +168,6 @@ class Database {
             loadImage("data/sprites/items/"+db.getString("sprite")+".png"));
           object=obj;
           if (db.getString("reciept")!=null) {  //заполнение рецепта
-            object.scope_of_operation=db.getInt("scope_of_operation"); //определяет трудоемкость изготовления 1 операции
-            object.complexity=db.getInt("complexity"); //определяет сложность разработки
-            object.cost_develop=db.getFloat("cost_develop"); //определяет стоимость разработки
             object.weight=db.getInt("weight"); //определяет вес предмета
             object.count_operation=db.getInt("count_operation"); //определяет количество предмета изготовленного за 1 операцию
             object.reciept = new ComponentList(items);
@@ -129,10 +176,14 @@ class Database {
               JSONObject part = parse.getJSONObject(i);
               object.reciept.setComponent(part.getInt("id"), part.getInt("count"));
             }
+          } else {
+            object.maxPool=db.getInt("max_pool"); //определяет максимальное количество ресурсов в пуле
+            object.pool=object.maxPool;
           }
         }
 
         if (object!=null) {  //если объект базы данных создался
+
           object.description=label.get(db.getString("description")); //загружает краткое описание объекта
           object.cost=db.getFloat("cost"); //определяет стоимость
           list.add(object);

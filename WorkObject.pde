@@ -1,12 +1,9 @@
-interface executing {
-}
-
 abstract class WorkObject {
   int id, progress;
   PImage sprite;
   String name;
   Timer timer; 
-  static final int CONTAINER = 0, TERMINAL = 14, WORKBENCH=16, DEVELOPBENCH =17, FOUNDDRY =18, SAW_MACHINE =19;
+  static final int CONTAINER = 0, TERMINAL = 14, WORKBENCH=16, DEVELOPBENCH =17, FOUNDDRY =18, SAW_MACHINE =19, STONE_CARVER =20, WORKSHOP_MECHANICAL =21;
 
 
   WorkObject(int id) {
@@ -16,7 +13,7 @@ abstract class WorkObject {
     timer = new Timer();
   }
   protected float getTick() {
-    return 1000;
+    return world.date.getTick();
   }
   protected void tick() {
     if (!timer.check()) {
@@ -29,9 +26,6 @@ abstract class WorkObject {
   public void draw() {
     image(sprite, 0, 0);
   }
-
-
-
   public void drawSelected() {
     pushStyle();
     noFill();
@@ -52,13 +46,14 @@ abstract class WorkObject {
 
 
 
-class Terminal extends WorkObject implements executing {
+class Terminal extends WorkObject {
   float hp, hp_max, wear, speed;
   Item product;
   WorkLabel label;
   ComponentList products;
   int count_operation;
-
+  private float refund;
+  
   Terminal (int id) {
     super(id);
     label=null;
@@ -68,26 +63,28 @@ class Terminal extends WorkObject implements executing {
     products = data.objects.getId(id).products;
     hp_max=100;
     hp=hp_max;
-    wear=0.12;
+    wear=0.1;
     speed=60;
     count_operation=0;
+    refund=0;
   }
   color getColor() {
     return blue;
   }
   String getDescriptTask() {
+    Database.DataObject item = data.items.getId(productsList.select.id);
+    if (item.pool>0) {
     return "количество: "+count_operation+"\n"
-      +"суммарная стоимость: "+count_operation*data.items.getId(productsList.select.id).cost+"$\n"+
-      getProductDescript();
+      +"цена: "+getDecimalFormat(count_operation*item.getCostForPool())+" $\n"
+      +"пул: "+item.pool+"\n";
+    } else 
+    return "недоступно";
   }
   String getProductDescript() {
-    if (product!=null) {
-      if (label==null)
-        return "доставка товара: "+product.name+" ("+progress+"/"+getMaxProgress()+")"+"\n";
-      else 
-      return product.name+" доставлен";
-    } else
-      return "не выбран товар для доставки"+"\n";
+    if (label==null)
+      return "доставка товара: "+product.name+" ("+progress+"/"+getMaxProgress()+")"+"\n";
+    else 
+    return product.name+" доставлен";
   }
 
 
@@ -98,25 +95,28 @@ class Terminal extends WorkObject implements executing {
     return false;
   }
   int getMaxProgress() {
-    return 120;
+    return 100+100/count_operation;
   }
 
   public void update() {
     speed=constrain(speed, 0, 1000);
     hp=constrain(hp, 0, 100);
     wear=constrain(wear, 0.01, 0.5);
+
     if (product!=null) {
-      if (label==null) {
-        progress++;
-        hp-=wear;
-        if (progress>=getMaxProgress()) {
-          float x=world.room.getCoordObject(this)[0];
-          float y=world.room.getCoordObject(this)[1];
-          float size=world.room.getCoordObject(this)[2];
-          label=new WorkLabel(x-10, y-10, size, size, product, product.count_operation*count_operation, getNewProduct(), getColor());
-          if (!menuMain.select.event.equals("showObjects")) 
-          label.setActive(false);
-          progress=0;
+      if (hp>0) {
+        if (label==null) {
+          progress++;
+          hp-=wear;
+          if (progress>=getMaxProgress()) {
+            float x=world.room.getCoordObject(this)[0];
+            float y=world.room.getCoordObject(this)[1];
+            float size=world.room.getCoordObject(this)[2];
+            label=new WorkLabel(x-10, y-10, size, size, product, product.count_operation*count_operation, getNewProduct(), getColor());
+            if (!menuMain.select.event.equals("showObjects")) 
+              label.setActive(false);
+            progress=0;
+          }
         }
       }
     }
@@ -153,8 +153,10 @@ class Terminal extends WorkObject implements executing {
   }
   protected String getDescript() {
     return "наименование"+": "+name+"\n"+
-      "состояние"+": "+hp+"/"+hp_max+"\n"+
-      "скорость"+": "+map(speed, 1000, 0, 0, 100)+"\n"+
+      "состояние"+": "+getDecimalFormat(hp)+"/"+hp_max+"\n";
+  }
+  protected String getCharacters() {
+    return "скорость"+": "+map(speed, 1000, 0, 0, 100)+"\n"+
       "износостойкость"+": "+map(wear, 0.01, 0.5, 100, 0)+"\n";
   }
 }
@@ -172,20 +174,16 @@ class Workbench extends Terminal {
     return product.scope_of_operation*count_operation;
   }
   String getDescriptTask() {
-    return "количество операций: "+count_operation+"\n"
-      +"суммарное количество: "+count_operation*data.items.getId(productsList.select.id).count_operation+"\n"
-      +"суммарная трудоёмкость: "+count_operation*data.items.getId(productsList.select.id).scope_of_operation+"\n"
-      +"компоненты: "+data.items.getId(productsList.select.id).reciept.getNames(count_operation)+"\n"+
-      getProductDescript();
+    Database.DataObject product = data.items.getId(productsList.select.id);
+    return "операции: "+count_operation+"\n"
+      +"изделия: "+count_operation*data.items.getId(productsList.select.id).count_operation+" шт.\n"
+      +"трудоёмкость: "+count_operation*(product.scope_of_operation+product.reciept.getScopeTotal())+"\n";
   }
   String getProductDescript() {
-    if (product!=null) {
       if (label==null)
         return "изделие: "+product.name+" ("+progress+"/"+getMaxProgress()+")"+"\n";
       else 
       return product.name+" изготовлено";
-    } else
-      return "нет задания на изготовление"+"\n";
   }
 }
 
@@ -201,21 +199,17 @@ class DevelopBench extends Workbench {
     return true;
   }
   int getMaxProgress() {
-    return product.complexity;
+    return data.items.getId(product.id).reciept.getScopeTotal();
   }
   String getDescriptTask() {
-    return "сложность разработки: "+data.items.getId(productsList.select.id).complexity+"\n"+
-      "стоимость разработки: "+data.items.getId(productsList.select.id).cost_develop+"$\n"+
-      getProductDescript();
+    return "сложность: "+data.items.getId(productsList.select.id).reciept.getScopeTotal()+"\n"+
+      "цена: "+data.items.getId(productsList.select.id).getCostDevelop()+"$\n";
   }
   String getProductDescript() {
-    if (product!=null) {
       if (label==null)
         return "чертеж на: "+product.name+" ("+progress+"/"+getMaxProgress()+")"+"\n";
       else 
       return product.name+" разработан";
-    } else
-      return "нет задания на разработку"+"\n";
   }
 }
 
@@ -226,7 +220,7 @@ class Container extends WorkObject {
   Container (int id) {
     super(id);
     items = new ItemList();
-    capacity = 20;
+    capacity = 200;
   }
   protected String getDescript() {
     return "наименование"+": "+name+"\n"

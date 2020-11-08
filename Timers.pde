@@ -4,28 +4,20 @@ class Timer {
   boolean flag;
   long timing;
   float set;
-
   Timer() {  
     flag=false;
     timers.add(this);
   }
-
-  void set(float tempSet) {
+  void set(float set) {
     timing=millis();
     flag=true;
-    set=tempSet;
+    this.set=set;
   }
-
-  long getProcess() {
-    return int(map(millis() - timing, 0, set, 0, world.size_grid)); //не работает
-  }
-
   void tick() {
     if (millis() - timing > set) {                                                               // таймер прерывания на движение игрока 
       flag=false;
     }
   }
-
   boolean check() {
     return flag;
   }
@@ -50,6 +42,10 @@ class Date {
   long getTick() {
     return 100;
   }
+  void newDay() {
+   data.items.putPool(); 
+  }
+  
   void update() {
     minute++;
     if (minute>59) {
@@ -58,6 +54,7 @@ class Date {
       if (hour>23) {
         hour=0;
         day++;
+        newDay();
         if (day>30) {
           day=1;
           month++;
@@ -67,16 +64,21 @@ class Date {
       }
     }
   }
-String isNotZero(int num) {
+  String isNotZero(int num) {
     if (num<10)
       return "0"+str(num);
     else
       return str(num);
-}
- String getDateNotTime() {
+  }
+  String getDateNotTime() {
     return  isNotZero(day)+"."+isNotZero(month)+"."+year;
   }
   String getDate() {
     return  isNotZero(hour)+":"+isNotZero(minute)+" "+isNotZero(day)+"."+isNotZero(month)+"."+year;
+  }
+
+  public int getDays(int scope) { //принимает трудоемкость с учетом количества
+    int all_second = 86400/100;
+    return int(scope/all_second);
   }
 }

@@ -4,11 +4,10 @@
 class Item {
   private final String name;
   protected final int id;
-  protected int scope_of_operation, count_operation, complexity;
+  protected int scope_of_operation, count_operation;
   protected final int weight;
   protected float cost;
-  static final int STEEL=0, COPPER=1, OIL=2, STONE=3, WOOD=4, PLATE_STEEL=5, PLATE_COPPER=6, RUBBER=7, BLOCK_STONE=8, BLOCK_STEEL=9, 
-    BLOCK_PLASTIC=10, KIT_REPAIR=11,   ALL=0;
+  static final int ALL=0, PRODUCTS=1;
   protected ComponentList reciept;
 
   Item (int id) {
@@ -17,7 +16,6 @@ class Item {
     weight=data.items.getId(id).weight;
     reciept=data.items.getId(id).reciept;
     cost=data.items.getId(id).cost;
-    complexity=data.items.getId(id).complexity;
     count_operation=data.items.getId(id).count_operation;
     scope_of_operation=data.items.getId(id).scope_of_operation;
   }
@@ -95,12 +93,11 @@ class ItemList extends ArrayList <Item> {
       int countNeed = items.calculationItem(part)*count;
       int countCurrent = this.calculationItem(part);
       if (countCurrent<countNeed)  //проверка на соответствие количества
-        needs.setComponent(part,countNeed-countCurrent);
-      
+        needs.setComponent(part, countNeed-countCurrent);
     }  
     return needs;
   }
-  boolean isItems(ComponentList items,int count) {
+  boolean isItems(ComponentList items, int count) {
     for (int part : items.sortItem()) {  //сортировка по id
       if (this.calculationItem(part)<items.calculationItem(part)*count)  //проверка на соответствие количества
         return false;  //количество не соответствует
@@ -188,7 +185,63 @@ class ComponentList extends IntList {
     }  
     return needs;
   }
-  boolean isItems(ComponentList items) {
+
+  ComponentList getMult(int count) { //возвращает увеличенную копию
+    ComponentList needs = new ComponentList(data);
+    for (int part : this) {
+      needs.setComponent(part, count);
+    }  
+    return needs;
+  }
+  float getCostTotal() {   //возвращает себестоимость изготовления
+    float cost = 0;
+    for (int part : getResources()) {
+      Database.DataObject component =  data.getId(part);
+      cost+=component.cost;
+    }
+    return cost;
+  }
+
+  ComponentList getResources() { //возвращает список ресурсов для изготовления изделия
+    ComponentList resources = new ComponentList(data);
+    ArrayList <IntList> reciepts = new ArrayList <IntList>();
+    reciepts.add(this);
+    while (true) {
+      if (reciepts.isEmpty())
+        break;
+      for (int part : reciepts.get(0)) {
+        Database.DataObject component =  data.getId(part);
+        if (component.reciept!=null) 
+          reciepts.add(component.reciept);
+        else
+          resources.append(part);
+      }
+      reciepts.remove(0);
+    }
+    return (ComponentList)resources;
+  }
+
+
+  int getScopeTotal() { //возвращает полную трудоемкость изготовения
+    int scope = 0;
+    ArrayList <IntList> reciepts = new ArrayList <IntList>();
+    reciepts.add(this);
+    while (true) {
+      if (reciepts.isEmpty())
+        break;
+      for (int part : reciepts.get(0)) {
+        Database.DataObject component =  data.getId(part);
+        if (component.reciept!=null) {
+          reciepts.add(component.reciept);
+          scope+=100;//component.scope_of_operation;
+        }
+      }
+      reciepts.remove(0);
+    }
+    return scope;
+  }
+
+  boolean isComponents(ComponentList items) {
     for (int part : items.sortItem()) {  //сортировка по id
       if (this.calculationItem(part)<items.calculationItem(part)) { //проверка на соответствие количества
         return false;  //количество не соответствует
@@ -198,7 +251,7 @@ class ComponentList extends IntList {
   }
 
   void removeItems(ComponentList items) {
-    if (!isItems(items))
+    if (!isComponents(items))
       return;
     else { 
       for (int part : items) {
