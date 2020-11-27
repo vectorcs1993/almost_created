@@ -1,28 +1,46 @@
-SimpleButton buttonCreate, buttonCreate1, buttonCreate10, buttonCreateBack1, buttonCreateBack10, buttonCancelProduct, buttonOpenOrder, buttonCloseOrder, buttonCancelOrder, 
-  buttonPause, buttonStart, buttonRemoveObject, buttonRemoveItem, buttonRemoveAllItem, buttonRepair;
-RadioButton menuMain, menuTasker, menuContainer, menuOrders, menuReciept;
+SimpleButton buttonCreate, buttonCreate1, buttonCreate10, buttonCreateBack1, buttonCreateBack10, buttonCreateManual, buttonCancelProduct, 
+  buttonOpenOrder, buttonCloseOrder, buttonCancelOrder, buttonPause, buttonStart, buttonRemoveObject, buttonRemoveItem, buttonRemoveAllItem, 
+  buttonRepair, buttonRecrutAdd, buttonRecrutRemove, buttonSend;
+RadioButton menuMain, menuTasker, menuSimple, menuVerySimple, menuOrders, menuReciept;
 SimpleRadioButton buttonInfo, buttonManager, buttonMaintenance, buttonTask; 
 Listbox buildings, productsList, componentsList, items, orders, helpList;
+ControlP5 interfaces;
+Textarea console, shortInfo;
+Textfield input;
 Text textConsole;
-WindowLabel wMessage;
+
+PImage info, task, maintenance, action;
 
 
 void setupInterface() {
-  textConsole = new Text (192, 362, width-192-10, height-365, white, color(60));
+
+  info = loadImage("data/sprites/hud/hud_info.png");
+  task = loadImage("data/sprites/hud/hud_task.png");
+  maintenance = loadImage("data/sprites/hud/hud_maintenance.png");
+action = loadImage("data/sprites/hud/hud_action.png");
+
+  textConsole = new Text (515, 78, 192, 64, white, color(60));
+  //специальный функционал для переключения скроллинг списка
+  Runnable resetScroll = new Runnable() {
+    public void run() {
+      orders.resetScroll();
+    }
+  };
+
 
   buildings=new Listbox(512, 63, 286, 288, Listbox.OBJECTS);
   buildings.loadObjects(data.objects);
   items=new Listbox(194, 32, 384, 320, Listbox.ITEMS);
   orders=new Listbox(194, 66, 604, 288, Listbox.ORDERS);
-  productsList=new Listbox(512, 202, 287, 192, Listbox.ITEMS);
-  componentsList=new Listbox(512, 437, 287, 160, Listbox.ITEMS, -1);
+  productsList=new Listbox(512, 96, 287, 192, Listbox.ITEMS);
+  componentsList=new Listbox(512, 326, 287, 128, Listbox.ITEMS, -1);
   helpList=new Listbox(194, 66, 604, 288, Listbox.HELP_MESSAGE);
   helpList.loadHelpMessages(data.helpMessages);
 
-  buttonInfo = new SimpleRadioButton("информация", "getInfo"); 
-  buttonManager=new SimpleRadioButton("управление", "getManager");
-  buttonTask=new SimpleRadioButton("задачи", "getTasks");
-  buttonMaintenance=new SimpleRadioButton("обслуживание", "getMaintenance");
+  buttonInfo = new SimpleRadioButton("информация", "getInfo", info);
+  buttonManager=new SimpleRadioButton("управление", "getManager", action);
+  buttonTask=new SimpleRadioButton("задачи", "getTasks", task);
+  buttonMaintenance=new SimpleRadioButton("обслуживание", "getMaintenance", maintenance);
 
 
   menuMain = new RadioButton (0, 32, 192, 190, RadioButton.VERTICAL);  //главное меню
@@ -33,30 +51,26 @@ void setupInterface() {
     new SimpleRadioButton("заказы", "showOrders"), 
     new SimpleRadioButton("помощь", "showHelp"), 
     new SimpleRadioButton("меню", "showMenu")});
-  menuContainer=new RadioButton (513, 32, 286, 91, RadioButton.VERTICAL);
-  menuContainer.addButtons(new SimpleRadioButton [] {buttonInfo.clone(), buttonManager.clone(), buttonMaintenance.clone()});
-  menuTasker=new RadioButton (513, 32, 286, 123, RadioButton.VERTICAL);
+  menuSimple=new RadioButton (513, 32, 96, 32, RadioButton.HORIZONTAL);
+  menuSimple.addButtons(new SimpleRadioButton [] {buttonInfo.clone(), buttonManager.clone(), buttonMaintenance.clone()});
+  menuTasker=new RadioButton (513, 32, 128, 32, RadioButton.HORIZONTAL);
   menuTasker.addButtons(new SimpleRadioButton [] {buttonInfo.clone(), buttonManager.clone(), buttonMaintenance.clone(), buttonTask.clone()});
+menuVerySimple=new RadioButton (513, 32, 64, 32, RadioButton.HORIZONTAL);
+  menuVerySimple.addButtons(new SimpleRadioButton [] {buttonInfo.clone(), buttonManager.clone()});
 
 
-  //специальный функционал для переключения скроллинг списка
-  Runnable resetScroll = new Runnable() {
-    public void run() {
-      orders.resetScroll();
-    }
-  };
   menuOrders = new RadioButton (194, 32, 604, 32, RadioButton.HORIZONTAL);  //главное меню
   menuOrders.addButtons(new SimpleRadioButton [] {new SimpleRadioButton("новые", "showAllOrders", resetScroll), 
     new SimpleRadioButton("открытые", "showOpenOrders", resetScroll), 
     new SimpleRadioButton("закрытые", "showCloseOrders", resetScroll), 
     new SimpleRadioButton("отмененные", "showFailOrders", resetScroll)});
-    
- menuReciept = new RadioButton (512, 397,287, 32, RadioButton.HORIZONTAL);  //главное меню
+
+  menuReciept = new RadioButton (512, 290, 287, 32, RadioButton.HORIZONTAL);  //главное меню
   menuReciept.addButtons(new SimpleRadioButton [] {new SimpleRadioButton("компоненты", "showComponents"), 
     new SimpleRadioButton("ресурсы", "showResources")});
 
   //создание кнопок 
-  buttonCreate = new SimpleButton(230, 550, 192, 32, data.label.get("button_create"), new Runnable() {
+  buttonCreate = new SimpleButton(565, 563, 192, 32, data.label.get("button_create"), new Runnable() {
     public void run() {
       Object object =world.room.currentObject; 
       Database.DataObject product = data.items.getId(productsList.select.id);
@@ -75,7 +89,7 @@ void setupInterface() {
             world.room.removeItems(product.reciept, terminal.count_operation); //использует предметы 
             start=true;
           } else 
-          wMessage = new WindowLabel("не хватает: "+world.room.getItems(Item.ALL).getNeedItems(product.reciept, terminal.count_operation).getNames());
+          booster.showInfoDialog("не хватает: "+world.room.getItems(Item.ALL).getNeedItems(product.reciept, terminal.count_operation).getNames());
         } else if (purchase) {
           float sum_money = product.getCostForPool()*terminal.count_operation;
           if (sum_money<=world.company.money) {
@@ -84,20 +98,28 @@ void setupInterface() {
             product.pool-=terminal.count_operation;       
             start=true;
           } else
-            wMessage = new WindowLabel("не хватает средств");
+            booster.showInfoDialog("не хватает средств");
         } else if (develop) {
           float cost_dev = product.getCostDevelop();
           if (cost_dev<world.company.money) {
             world.company.money-=cost_dev;
             start=true;
           } else 
-          wMessage = new WindowLabel("не хватает средств");
+          booster.showInfoDialog("не хватает средств");
         }
         if (start) {
           terminal.product=new Item(product.id);
           terminal.progress=0;
         }
       }
+    }
+  }
+  );
+
+  buttonSend = new SimpleButton(322, 354, 96, 28, "отправить", new Runnable() {
+    public void run() {
+      input(input.getText());  
+      input.clear();
     }
   }
   );
@@ -113,9 +135,9 @@ void setupInterface() {
     }
   }
   );
-  buttonRemoveObject= new SimpleButton(536, 176, 160, 32, "уничтожить", new Runnable() {
+  buttonRemoveObject= new SimpleButton(528, 94, 160, 32, "уничтожить", new Runnable() {
     public void run() {
-      WorkObject object =world.room.currentObject;
+      WorkObject object = (WorkObject)world.room.currentObject;
       world.room.removeObject(object);
     }
   }
@@ -141,13 +163,33 @@ void setupInterface() {
       if (object instanceof Terminal) {
         Terminal terminal = (Terminal)object;
         terminal.hp=terminal.hp_max;
-        wMessage = new WindowLabel("стоимость ремонта "+terminal.name+": "+400+"$");
+        booster.showInfoDialog("стоимость ремонта "+terminal.name+": "+400+"$");
         world.company.money-=400;
       }
     }
   }
   );
-  buttonCreate1 = new SimpleButton(230, 517, 64, 32, "+1", new Runnable() {
+  buttonCreateManual = new SimpleButton(651, 532, 32, 32, "+n", new Runnable() {
+    public void run() {
+      Object object =world.room.currentObject;
+
+      if (object instanceof Terminal) {
+        Terminal terminal = (Terminal)object;
+        String input = booster.showTextInputDialog("введите количество:");
+        if (input!=null) {
+          if (int(input)>0) {
+            terminal.count_operation=int(input);
+            if (!(object instanceof Workbench) && !(object instanceof DevelopBench)) {
+              Database.DataObject product = data.items.getId(productsList.select.id);
+              terminal.count_operation=constrain(terminal.count_operation, 1, product.pool);
+            }
+          }
+        }
+      }
+    }
+  }
+  );
+  buttonCreate1 = new SimpleButton(583, 532, 32, 32, "+1", new Runnable() {
     public void run() {
       Object object =world.room.currentObject;
 
@@ -162,7 +204,7 @@ void setupInterface() {
     }
   }
   );
-  buttonCreate10 = new SimpleButton(296, 517, 64, 32, "+10", new Runnable() {
+  buttonCreate10 = new SimpleButton(617, 532, 32, 32, "+10", new Runnable() {
     public void run() {
       Object object =world.room.currentObject;
       if (object instanceof Terminal) {
@@ -176,7 +218,7 @@ void setupInterface() {
     }
   }
   );
-  buttonCreateBack1 = new SimpleButton(362, 517, 64, 32, "-1", new Runnable() {
+  buttonCreateBack1 = new SimpleButton(549, 532, 32, 32, "-1", new Runnable() {
     public void run() {
       Object object =world.room.currentObject;
       if (object instanceof Terminal) {
@@ -186,7 +228,7 @@ void setupInterface() {
     }
   }
   );
-  buttonCreateBack10 = new SimpleButton(428, 517, 64, 32, "-10", new Runnable() {
+  buttonCreateBack10 = new SimpleButton(515, 532, 32, 32, "-10", new Runnable() {
     public void run() {
       Object object =world.room.currentObject;
       if (object instanceof Terminal) {
@@ -220,7 +262,7 @@ void setupInterface() {
         world.company.opened.add(order);
         world.orders.remove(order);
       } else
-        wMessage = new WindowLabel("превышен лимит открытых заказов");
+        booster.showInfoDialog("превышен лимит открытых заказов");
     }
   }
   );
@@ -235,7 +277,7 @@ void setupInterface() {
           world.company.money+=order.cost;
           world.company.exp+=order.exp;
         } else
-          wMessage = new WindowLabel("не выполнены условия");
+          booster.showInfoDialog("не выполнены условия");
       }
     }
   }
@@ -249,17 +291,82 @@ void setupInterface() {
         float forfeit = getDecimalFormat(order.cost*0.05);
         world.company.money-=forfeit;
         world.company.update();
-        wMessage = new WindowLabel("заказ отменен, штраф: "+forfeit+" $");
+        booster.showInfoDialog("заказ отменен, штраф: "+forfeit+" $");
       }
     }
   }
   );
+
+  buttonRecrutAdd = new SimpleButton(536, 210, 192, 32, "нанять рабочего", new Runnable() {
+    public void run() {
+      Object object =world.room.currentObject;
+      if (object instanceof Workbench) {
+        Workbench workbench = (Workbench)object;
+       // Worker worker = new Worker();
+       // workbench.workers.add(worker);
+        //world.company.money-=worker.cost;
+      }
+    }
+  }
+  );
+  buttonRecrutRemove = new SimpleButton(536, 244, 200, 32, "уволить рабочего", new Runnable() {
+    public void run() {
+      Object object =world.room.currentObject;
+      if (object instanceof Workbench) {
+      //  Workbench workbench = (Workbench)object;
+      //  workbench.workers.remove(0);
+      }
+    }
+  }
+  );
+  input = interfaces.addTextfield("input").setColorForeground(white)
+    .setPosition(1, 353)
+    .setSize(320, 32)
+    .setFont(createFont("arial", 16))
+    .setFocus(true)
+    .setColor(white)
+    .setColorActive(white)
+    .setColorBackground(black);
+
+  console = interfaces.addTextarea("console")
+    .setPosition(1, _sizeY-215)
+    .setSize(_sizeX-290, 213)
+    .setFont(createFont("arial", 14))
+    .setLineHeight(24)
+    .setColor(white)
+    .setBorderColor(white)
+    .setColorBackground(black)
+    .setScrollForeground(white)
+    .setScrollBackground(black)
+    .setLineHeight(18)
+    .append("Запуск клиента: "+world.company.name);
+
+  shortInfo = interfaces.addTextarea("info")
+    .setPosition(515, 78)
+    .setSize(283, 64)
+    .setFont(createFont("arial", 14))
+    .setLineHeight(24)
+    .setColor(white)
+    .setBorderColor(white)
+    .setColorBackground(black)
+    .setScrollForeground(white)
+    .setScrollBackground(black)
+    .setLineHeight(14);
 }
 
+public void input(String message) {
+  if (message.length()>0) {
+    JSONObject intent = new JSONObject();
+    intent.setString("name", world.company.name);
+    intent.setInt("id_message", 2);
+    intent.setString("text", message);
+    client.write(intent.toString());
+  }
+}
 
 void taskControl(Terminal terminal) {
   boolean ready = true;
-  showScaleText(terminal.getDescriptTask(), 197, 370);  
+  showScaleText(terminal.getDescriptTask(), 518, 476);  
   if (terminal instanceof DevelopBench) 
     buttonCreate.text="разработать";
   else {
@@ -271,6 +378,7 @@ void taskControl(Terminal terminal) {
       buttonCreate.text="закупить";
     }
     if (ready) {
+      buttonCreateManual.setActive(true);
       buttonCreate1.setActive(true);
       buttonCreate10.setActive(true);
       if (terminal.count_operation>0) {
@@ -290,7 +398,25 @@ void taskControl(Terminal terminal) {
 
 void updateInterface() {
 
+  //текст консоли
+  console.setPosition(new float [] {1, map(_sizeY-215, 0, _sizeY, 0, context.height)});
+  console.setSize(int(context.width-290*getScaleX()), int(213*getScaleY()));
+
+  stroke(white);
+  noFill();
+  rect(console.getPosition()[0]-1, console.getPosition()[1]-1, int(context.width-290*getScaleX())+2, int(245*getScaleY())+2);
+  input.setPosition(new float [] {1, map(353, 0, _sizeY, 0, context.height)});
+  input.setSize(int(320*getScaleX()), int(32*getScaleY()));
+  //текст информации
+  float sy=map(78, 0, _sizeY, 0, context.height);
+  float sx=map(515, 0, _sizeX, 0, context.width);
+  shortInfo.setPosition(  new float [] {sx, sy});
+  shortInfo.setSize(int(map(283, 0, _sizeX, 0, context.width)), int(map(64, 0, _sizeX, 0, context.width)));//int(283*getScaleX()), int(64*getScaleY()));
+  shortInfo.setVisible(false);
+
+
   buttonCreate.setActive(false);
+  buttonCreateManual.setActive(false);
   buttonCreate1.setActive(false);
   buttonCreate10.setActive(false);
   buttonCreateBack1.setActive(false);
@@ -303,8 +429,11 @@ void updateInterface() {
   buttonRemoveItem.setActive(false);
   buttonRemoveAllItem.setActive(false);
   buttonRepair.setActive(false);
+  buttonRecrutAdd.setActive(false);
+  buttonRecrutRemove.setActive(false);
   textConsole.setActive(false);
-  menuContainer.setActive(false);
+  menuSimple.setActive(false);
+  menuVerySimple.setActive(false);
   menuOrders.setActive(false);
   menuTasker.setActive(false);
   menuReciept.setActive(false);
@@ -334,36 +463,39 @@ void updateInterface() {
       textConsole.loadText(data.label.get("selected_question"));
     textConsole.setActive(true);
   } else if (menuMain.select.event.equals("showObjects")) {
+
     world.room.setActiveLabels(true);
     world.setActive(true);
-    WorkObject object = world.room.currentObject;
+    WorkObject object = (WorkObject) world.room.currentObject;
     String event="";
     if (object!=null) {
       if (object instanceof Terminal) {
         Terminal terminal = (Terminal)object;
         menuTasker.control();
         event= menuTasker.select.event;
+
         if (event.equals("getInfo")) {
-          textConsole.loadText(terminal.getDescript());
-          textConsole.setActive(true);
+
+          shortInfo.setText(terminal.getDescript());
+          //rect(shortInfo.getPosition()[0]-1, shortInfo.getPosition()[1]-1, int(map(283, 0, _sizeX, 0, context.width))+2, int(map(64, 0, _sizeX, 0, context.width)+2));
+          shortInfo.setVisible(true);
         } else if (event.equals("getMaintenance")) {
           textConsole.loadText(terminal.getCharacters());
           textConsole.setActive(true);
           if (terminal.hp<terminal.hp_max)
             buttonRepair.setActive(true);
         } else if (event.equals("getTasks")) { //если выбрана вкладка задачи
-
           if (terminal.product==null) {        //если продукт не назначен
             if (terminal.products!=null) {      //если список продуктов существует
               if (terminal.products.size()>0) { //если список продуктов не пустой
                 //заголовок списка
                 if (terminal instanceof DevelopBench) 
-                  showScaleText("чертежи:", 512, 190);
+                  showScaleText("чертежи:", 512, 90);
                 else {
                   if (terminal instanceof Workbench) 
-                    showScaleText("изделия:", 512, 190);  
+                    showScaleText("изделия:", 512, 90);  
                   else
-                    showScaleText("ресурсы:", 512, 190);
+                    showScaleText("ресурсы:", 512, 90);
                 }
                 productsList.loadComponents(terminal.products); //загружает продукты в список
                 productsList.setActive(true);  //отображает список
@@ -373,34 +505,51 @@ void updateInterface() {
                   taskControl(terminal);
                   ComponentList reciept = data.items.getId(productsList.select.id).reciept;
                   if (reciept!=null) {
-                     menuReciept.control();
+                    menuReciept.control();
                     if (menuReciept.select.event.equals("showResources")) 
-                       componentsList.loadReciept(reciept.getResources().getMult(terminal.count_operation));
+                      componentsList.loadReciept(reciept.getResources().getMult(terminal.count_operation));
                     else if (menuReciept.select.event.equals("showComponents")) 
-                    componentsList.loadReciept(reciept.getMult(terminal.count_operation));  
+                      componentsList.loadReciept(reciept.getMult(terminal.count_operation));  
                     componentsList.setActive(true);
                   }
                 }
               } else 
-              showScaleText("недоступно", 214, 421);
+              showScaleText("недоступно", 522, 80);
             }
           } else {
-            showScaleText(terminal.getProductDescript(), 214, 421);
+            showScaleText(terminal.getProductDescript(), 522, 80);
             if (terminal.label==null)
               buttonCancelProduct.setActive(true);
           }
         }
       } else if (object instanceof Container) {
-        menuContainer.control();
-        event= menuContainer.select.event;
+        menuSimple.control();
+        event= menuSimple.select.event;
         Container container = (Container) object;
         if (event.equals("getInfo")) {
-          textConsole.loadText(container.getCapacityDescript());
-          textConsole.setActive(true);
+          shortInfo.setText(container.getDescript());
+          shortInfo.setVisible(true);
+        }
+      } else if (object instanceof Worker) {
+        menuVerySimple.control();
+        event= menuVerySimple.select.event;
+        Worker worker = (Worker) object;
+        if (event.equals("getInfo")) {
+          shortInfo.setText(worker.getDescript());
+          shortInfo.setVisible(true);
+        }
+      }  else if (object instanceof ItemMap) {
+        menuVerySimple.control();
+        event= menuVerySimple.select.event;
+        ItemMap itemMap = (ItemMap) object;
+        if (event.equals("getInfo")) {
+          shortInfo.setText(data.items.getId(itemMap.item).name);
+          shortInfo.setVisible(true);
         }
       }
       if (event.equals("getManager")) {
         buttonRemoveObject.setActive(true);
+      
       }
     } else {
       textConsole.loadText(data.label.get("selected_object"));
@@ -466,8 +615,6 @@ void updateInterface() {
   showScaleText("время и дата: "+world.date.getDate(), 192, 25);
 
   pushStyle();
-
-  textFont(fontConsole);
   text("FPS: "+int(frameRate)+"\n"
     +"mouse x: "+mouseX+"\n"
     +"mouse y: "+mouseY+"\n" 
@@ -476,11 +623,8 @@ void updateInterface() {
     +"screen_width: "+width+"\n"
     +"screen_height: "+height+"\n"
     +"object: "+world.getObjectInfo()+"\n"
-    , 5, 380);
+    , 5, 300);
   popStyle();
-
-  if (wMessage!=null)
-    wMessage.setActive(true);
 }
 
 class ScaleActiveObject extends ActiveElement {
@@ -494,11 +638,7 @@ class ScaleActiveObject extends ActiveElement {
     this(xx, yy, ww, hh);
     this.level = level;
   }
-  boolean isActiveSelect() {
-    if (level==world.level)
-      return true;
-    else return false;
-  }
+
 
   boolean isInside(float xx, float yy) {
     if ((xx>x*getScaleX() && xx<x*getScaleX()+width*getScaleX()) &&
@@ -530,7 +670,7 @@ class RadioButton extends ScaleActiveObject {
   public void control () {
     setActive(true); 
     for (SimpleRadioButton button : buttons) {
-      if (button.pressed && button.isActiveSelect()) 
+      if (button.pressed) 
         setSelect(button);
     }
   }
@@ -583,43 +723,65 @@ class SimpleButton extends ScaleActiveObject {
   boolean on;
   String text;
   Runnable script;
-
-  SimpleButton (float x, float y, float w, float h, String text, Runnable script, int level) {
-    this(x, y, w, h, text, script);
-    this.level=level;
-  }
+  PImage sprite;
 
   SimpleButton (float x, float y, float w, float h, String text, Runnable script) {
     super(x, y, w, h);
     this.text=text;
     this.script=script;
     level=0;
+    sprite=null;
+  }
+
+  SimpleButton (float x, float y, float w, float h, PImage sprite, Runnable script) {
+    this(x, y, w, h, "", script);
+    this.sprite=sprite;
   }
   void mousePressed () {
-    if (isActiveSelect()) {
-      if (script!=null)
-        script.run();
-    }
+    if (script!=null)
+      script.run();
   }
   void draw () {
     pushMatrix();
     scale(getScaleX(), getScaleY());
     pushStyle();  
-    if (hover && isActiveSelect())
-      if (mousePressed) 
-        stroke(color(90));
+
+
+
+    if (sprite!=null) {
+      if (hover && mousePressed) 
+        image(sprite, x-2, y-2, width+4, height+4);
       else 
-      stroke(white);
-    else noStroke();
-    if ( on ) fill( white );
-    else fill(black);
-    rect(x, y, width, height);
-    strokeWeight(1);
-    textAlign(CENTER, CENTER);
-    if ( on ) fill(black);
-    else fill(white);
-    textSize(18);
-    text(text, x+this.width/2, y+this.height/2-textDescent());
+      image(sprite, x, y);
+      if ( on ) {
+        noFill();
+        stroke( white );
+
+        rect(x+2, y+2, width-4, height-4);
+      }
+    } else {
+      if ( on ) fill( white );
+      else fill(black);
+      noStroke();
+      rect(x, y, width, height);
+
+      if (hover)
+        if (mousePressed) 
+          stroke(color(90));
+        else 
+        stroke(white);
+      else noStroke();
+      rect(x+2, y+2, width-4, height-4);
+      strokeWeight(1);
+      textAlign(CENTER, CENTER);
+      if ( on ) fill(black);
+      else fill(white);
+
+
+
+
+      text(text, x+this.width/2, y+this.height/2-textDescent());
+    }
     popStyle();
     popMatrix();
   }
@@ -628,6 +790,15 @@ class SimpleButton extends ScaleActiveObject {
 class SimpleRadioButton extends SimpleButton {
   String event;
 
+  SimpleRadioButton (String text, String event, PImage sprite, Runnable script) {
+    this(text, event);
+    this.script=script;
+    this.sprite=sprite;
+  }
+  SimpleRadioButton (String text, String event, PImage sprite) {
+    this(text, event);
+    this.sprite=sprite;
+  }
   SimpleRadioButton (String text, String event, Runnable script) {
     this(text, event);
     this.script=script;
@@ -641,7 +812,7 @@ class SimpleRadioButton extends SimpleButton {
       on=!on;
   }
   public SimpleRadioButton clone() {
-    return new SimpleRadioButton (text, event, script);
+    return new SimpleRadioButton (text, event, sprite, script);
   }
 }
 
@@ -754,21 +925,21 @@ class Listbox extends ScaleActiveObject {
   }
   public void mouseMoved ( float mx, float my ) {
     if (hasSlider && mx > (x+this.width-20)*getScaleX()) return;
-    if (hover && isActiveSelect())
+    if (hover)
       hoverItem = listStartAt + int((my-y*getScaleY()) / (itemHeight*getScaleY()));
   }
   public void mouseExited ( float mx, float my ) {
     hoverItem = -1;
   }
   void mouseDragged (float mx, float my) {
-    if (!hasSlider || !isActiveSelect()) return;
+    if (!hasSlider) return;
     if (mx < x+this.width-20) return;
     valueY = my-itemHeight;
     valueY = constrain(valueY, y, y+this.height-itemHeight);
     update();
   }
   void mouseScrolled (float step) {
-    if (items.size()*itemHeight>height && hover && isActiveSelect()) {
+    if (items.size()*itemHeight>height && hover) {
       float heightScroll = items.size()*itemHeight-this.height; 
       float hS = heightScroll/itemHeight;
       valueY += constrain(step, -1, 1)*((items.size()*itemHeight)/hS);
@@ -787,7 +958,6 @@ class Listbox extends ScaleActiveObject {
     listStartAt = constrain(listStartAt, 0, listStartAt);
   }
   public void mousePressed ( float mx, float my ) { 
-    if (isActiveSelect()) {
       if (this.items==null) return;
       if (this.items.isEmpty()) return;
       if (hasSlider && mx > (x+this.width-20)*getScaleX()) return;
@@ -796,7 +966,7 @@ class Listbox extends ScaleActiveObject {
         select = items.get(constrain(pressed, 0, items.size()-1));
       else 
       select=null;
-    }
+  
   }
   boolean hoverNoSlider() {
     if (mouseX<(x+width-20)*getScaleX())
@@ -847,20 +1017,19 @@ class Listbox extends ScaleActiveObject {
     stroke(white);
     noFill();
     rect(x, y, this.width, this.height);
-    clip(x*getScaleX(), y*getScaleY(), this.width*getScaleX(), this.height*getScaleY());
     if ( items != null ) {
       for (int i = 0; i < int(this.height/itemHeight) && i <items.size(); i++) {
         stroke(white);
         if (i+listStartAt==items.indexOf(select))
           fill(white);
         else 
-        fill(((i+listStartAt) == hoverItem && hoverNoSlider() && isActiveSelect()) ? white : black);
+        fill(((i+listStartAt) == hoverItem && hoverNoSlider()) ? white : black);
         rect(x, y + (i*itemHeight), this.width, itemHeight);
         noStroke();
         if (i+listStartAt==items.indexOf(select))
           fill(black);
         else 
-        fill(((i+listStartAt) == hoverItem && hoverNoSlider() && isActiveSelect()) ? black : white);
+        fill(((i+listStartAt) == hoverItem && hoverNoSlider()) ? black : white);
         PImage image = items.get(constrain(i+listStartAt, 0, items.size()-1)).sprite;
         int h=5;
         if (image!=null) {
@@ -870,8 +1039,6 @@ class Listbox extends ScaleActiveObject {
         text(items.get(constrain(i+listStartAt, 0, items.size()-1)).label, x+h, y+(i+1)*itemHeight-5 );
       }
     }
-
-    noClip();
     if (hasSlider) {
       stroke(white);
       fill(black);
@@ -902,7 +1069,6 @@ class Text extends ScaleActiveObject {
     texts.clear();
   }
   public void loadText(String text) {
-    int prevLine = getTextNumStr();
     this.text=text;
     texts.clear();
     text+=" ";
@@ -926,8 +1092,6 @@ class Text extends ScaleActiveObject {
         current_str++;
       }
     }
-    //if (current_str<prevLine) 
-      //yT=0;
   }
   protected float getTextHeight() {
     return getTextNumStr()*grid_size*getScaleY();
@@ -941,7 +1105,6 @@ class Text extends ScaleActiveObject {
     pushStyle(); 
     fill(text_color);
     textLeading(grid_size);
-    clip(x*getScaleX(), y*getScaleY(), (width+1)*getScaleX(), (height+1)*getScaleY());
     if (text!=null) {
       if (getTextHeight()>height) 
         rect(x+width-3, y-map(yT, 0, getTextHeight(), 0, height), 3, map(height/getTextNumStr(), 0, getTextHeight(), 0, height)*getTextNumStr());
@@ -954,7 +1117,6 @@ class Text extends ScaleActiveObject {
         }
       }
     }
-    noClip();
     popStyle();
     popMatrix();
   }
@@ -966,54 +1128,6 @@ class Text extends ScaleActiveObject {
       if (getTextHeight()>=height*getScaleY())
         yT=int(constrain(yT-=10, -(getTextHeight()-height*getScaleY())-10, 0));
     }
-  }
-}
-
-class WindowLabel extends ScaleActiveObject {
-  String message, input;
-  Text text;
-  SimpleButton buttonOk;
-
-  WindowLabel (String message) {
-    super(150, 200, 500, 200);
-    this.message=message;
-    text = new Text (x+width/2-240, y+10, 480, 128, white, color(60));
-    world.input=false;
-    world.pause=true;
-    world.level=1;
-    buttonOk = new SimpleButton(x+width/2-63, y+height-64, 128, 32, "принято", new Runnable() {
-      public void run() {
-        if (wMessage!=null) {
-          wMessage.close();
-          wMessage=null;
-        }
-      }
-    }
-    , 1);
-  }
-  public void close() {
-    world.input=true;
-    world.pause=false;
-    buttonOk.setActive(false);
-    buttonOk=null;
-    world.level=0;
-    text.setActive(false);
-    setActive(false);
-  }
-  void draw() {
-    pushMatrix();  
-    pushStyle();
-    translate(x*getScaleX(), y*getScaleY());
-    scale(getScaleX(), getScaleY());
-
-    fill(black);
-    stroke(white);
-    rect(0, 0, width, height);
-    fill(white);
-    text.setActive(true);
-    text.loadText(message);
-    popStyle();
-    popMatrix();
   }
 }
 

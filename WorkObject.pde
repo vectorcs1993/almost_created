@@ -1,27 +1,17 @@
+
+
 abstract class WorkObject {
   int id, progress;
   PImage sprite;
   String name;
-  Timer timer; 
   static final int CONTAINER = 0, TERMINAL = 14, WORKBENCH=16, DEVELOPBENCH =17, FOUNDDRY =18, SAW_MACHINE =19, STONE_CARVER =20, WORKSHOP_MECHANICAL =21;
-
 
   WorkObject(int id) {
     this.id=id; 
-    sprite=getSpriteDatabase();
-    name = getNameDatabase();
-    timer = new Timer();
-  }
-  protected float getTick() {
-    return world.date.getTick();
-  }
-  protected void tick() {
-    if (!timer.check()) {
-      update();
-      timer.set(getTick());
+    if (id!=-1) {
+      sprite=data.objects.getId(id).sprite;
+      name = data.objects.getId(id).name;
     }
-  }
-  public void update() {
   }
   public void draw() {
     image(sprite, 0, 0);
@@ -34,16 +24,37 @@ abstract class WorkObject {
     rect(0, 0, world.size_grid, world.size_grid);
     popStyle();
   }
-  protected PImage getSpriteDatabase() {
-    return data.objects.getId(id).sprite;
+  public void drawCount(int count) {
+    pushStyle();
+    rectMode(CORNERS);
+    fill(black);
+    stroke(white);
+    rect(world.size_grid-textWidth(str(count))-3, world.size_grid-11, world.size_grid-2, world.size_grid-1);
+    textSize(10);
+    textAlign(RIGHT, BOTTOM);
+    fill(white);
+    text(count, world.size_grid-3, world.size_grid+2);
+    popStyle();
   }
-  protected String getNameDatabase() {
-    return data.objects.getId(id).name;
-  }
-
-  abstract protected String getDescript();
+  abstract public String getDescript();
 }
-
+class ItemMap extends WorkObject {
+  int item, count;
+  ItemMap (int item, int count) {
+    super(-1);
+    this.item=item;
+    this.count=count;
+    sprite=data.items.getId(item).sprite;
+    name=data.items.getId(item).name;
+  }
+  String getDescript() {
+    return "предмет";
+  }
+  void draw() {
+    super.draw();
+    drawCount(count);
+  }
+}
 
 
 class Terminal extends WorkObject {
@@ -53,7 +64,7 @@ class Terminal extends WorkObject {
   ComponentList products;
   int count_operation;
   private float refund;
-  
+  Timer timer;
   Terminal (int id) {
     super(id);
     label=null;
@@ -67,6 +78,13 @@ class Terminal extends WorkObject {
     speed=60;
     count_operation=0;
     refund=0;
+    timer = new Timer();
+  }
+  protected void tick() {
+    if (!timer.check()) {
+      update();
+      timer.set(getTick());
+    }
   }
   color getColor() {
     return blue;
@@ -74,20 +92,18 @@ class Terminal extends WorkObject {
   String getDescriptTask() {
     Database.DataObject item = data.items.getId(productsList.select.id);
     if (item.pool>0) {
-    return "количество: "+count_operation+"\n"
-      +"цена: "+getDecimalFormat(count_operation*item.getCostForPool())+" $\n"
-      +"пул: "+item.pool+"\n";
+      return "количество: "+count_operation+"\n"
+        +"цена: "+getDecimalFormat(count_operation*item.getCostForPool())+" $\n"
+        +"пул: "+item.pool;
     } else 
     return "недоступно";
   }
   String getProductDescript() {
     if (label==null)
-      return "доставка товара: "+product.name+" ("+progress+"/"+getMaxProgress()+")"+"\n";
+      return "доставка товара: "+product.name+" ("+progress+"/"+getMaxProgress()+")";
     else 
     return product.name+" доставлен";
   }
-
-
   protected float getTick() {
     return speed;
   }
@@ -102,7 +118,6 @@ class Terminal extends WorkObject {
     speed=constrain(speed, 0, 1000);
     hp=constrain(hp, 0, 100);
     wear=constrain(wear, 0.01, 0.5);
-
     if (product!=null) {
       if (hp>0) {
         if (label==null) {
@@ -151,17 +166,18 @@ class Terminal extends WorkObject {
     if (hp<hp_max)
       drawStatus(9, hp, hp_max, blue, red);
   }
-  protected String getDescript() {
+  public String getDescript() {
     return "наименование"+": "+name+"\n"+
-      "состояние"+": "+getDecimalFormat(hp)+"/"+hp_max+"\n";
+      "состояние"+": "+getDecimalFormat(hp)+"/"+hp_max;
   }
   protected String getCharacters() {
     return "скорость"+": "+map(speed, 1000, 0, 0, 100)+"\n"+
-      "износостойкость"+": "+map(wear, 0.01, 0.5, 100, 0)+"\n";
+      "износостойкость"+": "+map(wear, 0.01, 0.5, 100, 0);
   }
 }
 
 class Workbench extends Terminal {
+
 
   Workbench (int id) {
     super(id);
@@ -180,10 +196,10 @@ class Workbench extends Terminal {
       +"трудоёмкость: "+count_operation*(product.scope_of_operation+product.reciept.getScopeTotal())+"\n";
   }
   String getProductDescript() {
-      if (label==null)
-        return "изделие: "+product.name+" ("+progress+"/"+getMaxProgress()+")"+"\n";
-      else 
-      return product.name+" изготовлено";
+    if (label==null)
+      return "изделие: "+product.name+" ("+progress+"/"+getMaxProgress()+")"+"\n";
+    else 
+    return product.name+" изготовлено";
   }
 }
 
@@ -203,13 +219,13 @@ class DevelopBench extends Workbench {
   }
   String getDescriptTask() {
     return "сложность: "+data.items.getId(productsList.select.id).reciept.getScopeTotal()+"\n"+
-      "цена: "+data.items.getId(productsList.select.id).getCostDevelop()+"$\n";
+      "цена разработки: "+data.items.getId(productsList.select.id).getCostDevelop()+"$\n";
   }
   String getProductDescript() {
-      if (label==null)
-        return "чертеж на: "+product.name+" ("+progress+"/"+getMaxProgress()+")"+"\n";
-      else 
-      return product.name+" разработан";
+    if (label==null)
+      return "чертеж на: "+product.name+" ("+progress+"/"+getMaxProgress()+")"+"\n";
+    else 
+    return product.name+" разработан";
   }
 }
 
@@ -222,16 +238,14 @@ class Container extends WorkObject {
     items = new ItemList();
     capacity = 200;
   }
-  protected String getDescript() {
-    return "наименование"+": "+name+"\n"
-      // text_product+": "+isProductNull()+"\n"+
-      // text_items+": "+components.getNames(data.items)+
-      ;
+  public String getDescript() {
+    return "наименование"+": "+name+"\n"+
+      "вместимость: "+getCapacity()+"/"+capacity;
+    // text_product+": "+isProductNull()+"\n"+
+    // text_items+": "+components.getNames(data.items)+
   }
 
-  public String getCapacityDescript() {    
-    return "вместимость: "+getCapacity()+"/"+capacity;
-  }
+
   public int getCapacity() {
     int capacity = 0;
     for (Item item : items) 

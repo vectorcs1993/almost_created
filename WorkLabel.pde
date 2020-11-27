@@ -38,32 +38,44 @@ class WorkLabel extends ScaleActiveObject {
   }
   public void mousePressed() {
     if (newProduct) {
-  
-     
-          data.objects.getId(WorkObject.WORKBENCH).products.append(item.id);
 
-        ComponentList components =  data.objects.getId(WorkObject.DEVELOPBENCH).products;
-        components.removeValue(item.id);
-        Terminal terminal = world.room.getObjectAtLabel(this);
-        terminal.products.removeValue(item.id);
-        terminal.removeLabel();
-      
+
+      data.objects.getId(WorkObject.WORKBENCH).products.append(item.id);
+
+      ComponentList components =  data.objects.getId(WorkObject.DEVELOPBENCH).products;
+      components.removeValue(item.id);
+      Terminal terminal = world.room.getObjectAtLabel(this);
+      terminal.products.removeValue(item.id);
+      terminal.removeLabel();
     } else {
+      Terminal terminal = world.room.getObjectAtLabel(this);
+      int [] place = world.room.getAbsCoordObject(terminal);
+      world.room.addItem(place[0], place[1], item.id, count);
+      terminal.removeLabel();
+      /*
       for (WorkObject object : world.room.getAllObjects().getContainers()) {
-        Container container  = (Container) object;
-        if (container.isFreeCapacity(count)) {
-          container.items.addItemCount(item, count);
-          Terminal terminal = world.room.getObjectAtLabel(this);
-          terminal.removeLabel();
-          break;
-        } else {
-          if (container.getFreeCapacity()>0) {
-            int freeCapacity = container.getFreeCapacity();
-            container.items.addItemCount(item, freeCapacity);
-            count-=freeCapacity;
-          }
-        }
-      }
+       
+       
+       
+       
+       Container container  = (Container) object;
+       if (container.isFreeCapacity(count)) {
+       container.items.addItemCount(item, count);
+       Terminal terminal = world.room.getObjectAtLabel(this);
+       terminal.removeLabel();
+       break;
+       } else {
+       if (container.getFreeCapacity()>0) {
+       int freeCapacity = container.getFreeCapacity();
+       container.items.addItemCount(item, freeCapacity);
+       count-=freeCapacity;
+       }
+       }
+       
+       
+       
+       }
+       */
     }
   }
 }

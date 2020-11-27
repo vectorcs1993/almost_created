@@ -1,13 +1,14 @@
 class Order {
 
-  int id, count, day, exp;
+  int id, count, day;
+  float exp;
   String label;
   Item product;
   float cost;
   Date date;
 
 
-  Order (int id, Item product, int count, float cost, int day, int exp) {
+  Order (int id, Item product, int count, float cost, int day, float exp) {
     this.product=product;
     this.count=count;
     this.cost=cost;
@@ -35,7 +36,6 @@ class Order {
     return true;
   }
   public Date getDateForDays(int days) {
-
     int month =world.date.month;
     int year=world.date.year;
     int day =world.date.day;
@@ -55,12 +55,11 @@ class Order {
   }
   public void update() {
     cost=getDecimalFormat(cost);
-
-    int total_scope =1+(int(product.scope_of_operation+product.reciept.getScopeTotal())/150);
-    if (world.company.getLevel()<=total_scope)
-      exp = int(product.cost)*count;
+    int scope = 1+ product.scope_of_operation+product.reciept.getScopeTotal();
+    if (world.company.getLevel()<=scope/product.scope_of_operation)
+      exp = scope*count;
     else 
-    exp = int(product.cost/(world.company.getLevel()/total_scope+1))*count;
+    exp = (scope/world.company.getLevel())*count;
 
 
 

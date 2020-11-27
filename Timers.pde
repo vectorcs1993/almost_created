@@ -40,10 +40,11 @@ class Date {
     }
   }
   long getTick() {
-    return 100;
+    return 10;
   }
   void newDay() {
-   data.items.putPool(); 
+   data.items.putPool(); //восполнение мировых запасов ресурсов
+   world.company.setExpenses();
   }
   
   void update() {

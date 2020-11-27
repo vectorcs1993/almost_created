@@ -233,7 +233,7 @@ class ComponentList extends IntList {
         Database.DataObject component =  data.getId(part);
         if (component.reciept!=null) {
           reciepts.add(component.reciept);
-          scope+=100;//component.scope_of_operation;
+          scope+=10;//component.scope_of_operation;
         }
       }
       reciepts.remove(0);
