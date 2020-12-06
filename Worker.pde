@@ -2,20 +2,24 @@ PImage worker;
 
 
 class Worker extends WorkObject {
-  String name;
   float cost, payday;
-  int x, y, direction;
+  int x, y, speed, capacity;
   PImage sprite;
+  IntList skills;
+  HashMap skills_values;
+  ItemList items;
 
   //служебные для поиска пути
-  private GraphList path;
-  private Graph target, nextNode;
+  GraphList path;
+  Graph target, nextNode;
 
-  Timer update;
+  Timer update, upgrade;
 
-  Worker (int id) {
+  Worker (int id, int speed, int capacity) {
     super(-1);
     this.id=id;
+    this.speed=speed;
+    this.capacity=capacity;
     cost = 500;  
     payday = 50;
     x=y=direction=0;
@@ -23,18 +27,29 @@ class Worker extends WorkObject {
     path = new GraphList ();
     target = nextNode = null;
     update = new Timer();
-    name = "worker "+id;
+    upgrade = new Timer();
+    items = new ItemList();
+    name = "рабочий "+id;
+    skills = new IntList ();
+    skills_values = createSkillsValues();
+    skills.append(Job.CARRY);
+    skills.append(Job.DEVELOP);
+    skills.append(Job.CREATE);
+    skills.append(Job.SUPPLY);
+    skills.append(Job.REPAIR);
   }
   void draw() {
     pushMatrix();
     pushStyle();
     translate(x*world.size_grid+(world.size_grid/2), y*world.size_grid+(world.size_grid/2));
-    rotate(getDirectionRad(direction));
+    rotate(getDirectionRad());
     image(sprite, -world.size_grid/2, -world.size_grid/2);
+    if (!items.isEmpty())
+      image(data.items.getId(items.get(0).id).sprite, -world.size_grid/2, -world.size_grid/2-13);
     popStyle();
     popMatrix();
   }
-  public void drawSelected() {
+  void drawSelected() {
     pushStyle();
     noFill();
     stroke(green);
@@ -42,37 +57,51 @@ class Worker extends WorkObject {
     rect(x*world.size_grid, y*world.size_grid, world.size_grid, world.size_grid);
     popStyle();
   }
-  public String getDescript() {
-    return "рабочий: "+name+"\n"
-      +"зарплата: "+payday+" $/день";
+  String getDescript() {
+    return name+"\n"
+      +"работа: "+getJobDescript()+"\n"
+      +"зарплата: "+payday+" $/день"+"\n"
+      +"скорость: "+speed+"\n"
+      +"грузоподъемность: "+capacity;
+  }
+  String getJobDescript() {
+    if (job!=null)
+      return job.getStatus();
+    else
+      return "нет";
+  }
+  HashMap createSkillsValues() {
+    HashMap skills = new HashMap <Integer, Integer>(); 
+    for (int i : getAllSkills())
+      skills.put(i, 0);
+    return skills;
+  }
+  int [] getAllSkills() {
+    return new int [] {Job.CARRY, Job.DEVELOP, Job.REPAIR, Job.CREATE, Job.SUPPLY};
   }
   void update() {
-    if (!update.check() && !world.pause) {
-      if (path!=null) {
-        if  (path.isEmpty()) {
-          int x=  int(random(10));
-          int y = int(random(10));
-          if (getPathTo(world.room.node[this.x][this.y], world.room.node[x][y])!=null)
-            moveTo(x, y);
-        } else {
-          if (path.isSolid()) {
-            int x=  int(random(10));
-            int y = int(random(10));
-            if (getPathTo(world.room.node[this.x][this.y], world.room.node[x][y])!=null)
-              moveTo(x, y);
-          } else
-            moveNextPoint();
-        }
+    if (!update.check() && !world.pause) {  //если пришло время обновления
+      if (job!=null) {
+        if (job.isComplete()) {
+          job.close();
+          job=null;
+        } else 
+        job.update();
       }
-      update.set(300);
+      update.set(map(speed, 0, 10, 1000, 100));
     }
     draw();
+    if (job!=null) {
+      pushMatrix();
+      translate(x*world.size_grid+world.size_grid/2, y*world.size_grid+world.size_grid/2);
+      drawStatus(9, job.getProcess(), job.getProcessMax(), yellow, red);
+      popMatrix();
+    }
   }
 
 
-  protected float getDirectionRad(int dir) {
-    dir=constrain(dir, 0, 7);
-    switch (dir) {
+  float getDirectionRad() {
+    switch (direction) {
     case 1: 
       return radians(90);
     case 2:  
@@ -99,7 +128,6 @@ class Worker extends WorkObject {
         path.clear();
       path=getPathTo(world.room.node[this.x][this.y], world.room.node[x][y]);
       if (path!=null) {
-        int pathFull=path.size();
         if (path!=null) 
           if (!path.isEmpty())
             target=path.get(0);
@@ -107,8 +135,6 @@ class Worker extends WorkObject {
     }
   }
   public void moveTo(Graph object) {
-    int oldx=x;
-    int oldy=y;
     if (object.x<x && object.y==y) { //влево          270              
       x-=1;
     } else if (object.x>x && object.y==y) {       //вправо 90
@@ -132,8 +158,6 @@ class Worker extends WorkObject {
     } 
     x=constrain(object.x, 0, world.room.sizeX-1);                             
     y=constrain(object.y, 0, world.room.sizeY-1);
-    world.room.node[oldx][oldy].solid=false;
-    world.room.node[x][y].solid=true;
   }
   void moveNextPoint() {
     if (!path.isEmpty()) {
@@ -148,6 +172,11 @@ class Worker extends WorkObject {
       }
     }
   }
+  void work(int work) {
+    int skill =  skills_values.get(work).hashCode()+1;
+    skills_values.put(work, skill);
+  }
+
   private void setDirection(int x, int y) {
     if (x<this.x && y==this.y)
       direction=3;

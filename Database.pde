@@ -137,6 +137,8 @@ class Database {
       return new Workbench(obj.id);
     case WorkObject.WORKSHOP_MECHANICAL: 
       return new Workbench(obj.id);
+      case WorkObject.EXTRUDER: 
+      return new Workbench(obj.id);
     }
     return null;
   }

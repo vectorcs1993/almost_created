@@ -12,7 +12,7 @@ class World extends ScaleActiveObject {
 
   World (float xx, float yy, float ww, float hh) {
     super(xx, yy, ww, hh);
-    room = new Room(10, 10);
+    room = new Room(int(ww/32), int(hh/32));
     size_grid=32;
     company=new Company ("Robocraft");
     orders = new OrderList();
@@ -37,6 +37,8 @@ class World extends ScaleActiveObject {
   }
   public void update() {
     company.update();
+
+
     if (!pause) {
 
       room.update();
@@ -49,7 +51,6 @@ class World extends ScaleActiveObject {
       allOrders.addAll(company.opened);
       allOrders.addAll(company.closed);
       allOrders.addAll(company.failed);
-
       if (orders.isEmpty() || orders.size()<company.ordersLimited) {
         Item item = new Item(data.items.getRandom(Item.PRODUCTS).id); //определяет изделие
         int scope_one =item.scope_of_operation+item.reciept.getScopeTotal();
@@ -120,10 +121,19 @@ class World extends ScaleActiveObject {
         return "нет";
     }
   }
+  int [] getPlace(int x, int y, int direction) {
+    if (direction==0)
+      return new int [] {x, y-1};
+    else if (direction==1)
+      return new int [] {x+1, y};
+    else if (direction==2)
+      return new int [] {x, y+1};
+    else 
+    return new int [] {x-1, y};
+  }
 
   public WorkObject getObject() {
     if (hover) {
-
       if (company.getWorkers(getAbsCoordX(), getAbsCoordY()).isEmpty())
         return room.object[getAbsCoordX()][getAbsCoordY()];
       else
@@ -131,8 +141,6 @@ class World extends ScaleActiveObject {
     } else 
     return null;
   }
-
-
   public void mousePressed() {
     if (input) {
       if (!room.isHoverLabel()) {
@@ -152,7 +160,7 @@ class World extends ScaleActiveObject {
               Database.DataObject newObj = data.objects.getId(buildings.select.id);
               if (newObj.cost<=company.money) {
                 if (room.isPlaceBuilding(newObj, _x, _y)) {
-                  if (room.getAllObjects().size()<company.buildingLimited) {
+                  if (room.getAllObjects().getNoItemMap().size()<company.buildingLimited) {
                     WorkObject newObject = data.getNewObject(newObj);
                     if (newObject!=null) {
                       company.money-=newObj.cost;
@@ -194,21 +202,7 @@ class World extends ScaleActiveObject {
       object[5][4] = new DevelopBench(WorkObject.DEVELOPBENCH);
       object[6][4] = new Container(0);
     }
-    //return NotById
-    /*
-    float [] getCoordObject(WorkObject object) {
-     for (int ix=0; ix<sizeX; ix++) {
-     for (int iy=0; iy<sizeY; iy++) {
-     WorkObject current = this.object[ix][iy];
-     if (current!=null) {
-     if (current==object)
-     return new float [] {x+ix*size_grid, y+iy*size_grid, size_grid};
-     }
-     }
-     }
-     return null;
-     }  
-     */
+
 
     float [] getAbsCoord(int x, int y) {
       return new float [] {x*size_grid+size_grid/2, y*size_grid+size_grid/2};
@@ -234,9 +228,21 @@ class World extends ScaleActiveObject {
       }
       return null;
     }
+    int [] getRandomCoord() { //доделать
+
+      for (int ix=0; ix<sizeX; ix++) {
+        for (int iy=0; iy<sizeY; iy++) {
+          WorkObject current = this.object[ix][iy];
+          if (current!=null) {
+            return new int [] {ix, iy};
+          }
+        }
+      }
+      return null;
+    }
 
     public Terminal getObjectAtLabel(WorkLabel label) {
-      for (WorkObject part : getAllObjects().getTerminals()) {
+      for (WorkObject part : getAllObjects().getWorkObjects()) {
         Terminal terminal = (Terminal)part; 
         if (terminal .label==label)
           return terminal;
@@ -261,6 +267,7 @@ class World extends ScaleActiveObject {
         for (int iy=0; iy<sizeY; iy++) {
           if (this.object[ix][iy]==object) {
             this.object[ix][iy]=null;
+            node[ix][iy].solid=false;
             if (currentObject==object)
               currentObject=null;
             break;
@@ -274,8 +281,28 @@ class World extends ScaleActiveObject {
         part.setActive(active);
     }
 
-    public void addItem(int x, int y, int id, int count) {
-      object[x-1][y]=new ItemMap(id, count);
+    public boolean addItem(int cx, int cy, int id, int count) {
+      int [] neighbors = new int [] {59, 49, 61, 71, 48, 50, 72, 70};
+      for (int i=0; i<neighbors.length; i++) {  //цикл перебирает все соседник клетки в соответствией с матрицей размещения
+        int ix=cx+matrixShearch[neighbors[i]][0]; //корректировка координаты х
+        int iy=cy+matrixShearch[neighbors[i]][1]; //корректировка координаты у
+        if (ix<0 || iy<0)  //если алгоритм выходит за пределы карты
+          continue;
+        if (object[ix][iy]==null) {
+          object[ix][iy] = new ItemMap(id, count);
+          return true;
+        } else {
+
+          if (object[ix][iy] instanceof ItemMap) {
+            ItemMap itemMap = (ItemMap) object[ix][iy];
+            if (itemMap.item==id) {
+              itemMap.count+=count;
+              return true;
+            }
+          }
+        }
+      }
+      return false;
     }
 
     public ItemList getItems(int filter) {
@@ -286,7 +313,20 @@ class World extends ScaleActiveObject {
       }
       return list;
     }
-
+    int getShearchInItemMap(IntList items) { 
+      for (int part : items) { 
+        if (getAllObjects().getItems().getItemById(part)!=null) 
+          return part;
+      }
+      return -1;
+    }
+    int getShearchInItem(IntList items) {
+      for (int part : items) { 
+        if (world.room.getItems(Item.ALL).getItem(part)!=null) 
+          return part;
+      }
+      return -1;
+    }
     public void removeItems(ComponentList items, int count) {
       while (count!=0) {
         for (int part : items) 
@@ -332,7 +372,7 @@ class World extends ScaleActiveObject {
     }
     public ArrayList <WorkLabel> getAllLabels() {
       ArrayList <WorkLabel> labels = new ArrayList <WorkLabel>();
-      for (WorkObject part : getAllObjects().getTerminals()) {
+      for (WorkObject part : getAllObjects().getWorkObjects()) {
         Terminal terminal = (Terminal)part; 
         if (terminal.label!=null) 
           labels.add(terminal.label);
@@ -350,6 +390,9 @@ class World extends ScaleActiveObject {
       }
       return objects;
     }
+
+
+
     private void drawGrid() {
       for (int ix=0; ix<sizeX; ix++) {
         for (int iy=0; iy<sizeY; iy++) {
@@ -369,14 +412,16 @@ class World extends ScaleActiveObject {
       for (int ix=0; ix<sizeX; ix++) {
         for (int iy=0; iy<sizeY; iy++) {
           pushMatrix();
-          translate(ix*size_grid, iy*size_grid);
+          translate(ix*size_grid+size_grid/2, iy*size_grid+size_grid/2);
           pushStyle();
-          image(floor, 0, 0);
+          image(floor, -world.size_grid/2, -world.size_grid/2);
           popStyle();
           WorkObject current = object[ix][iy];
           if (current!=null) {
+
             current.draw();
-            node[ix][iy].solid=true;
+            if (!(current instanceof ItemMap))
+              node[ix][iy].solid=true;
           } 
 
           popMatrix();
@@ -392,15 +437,18 @@ class World extends ScaleActiveObject {
       if (currentObject!=null) {
         for (int ix=0; ix<sizeX; ix++) {
           for (int iy=0; iy<sizeY; iy++) {
-            if (node[ix][iy].solid) {
-              fill(white);
-              text("s", ix*size_grid, iy*size_grid);
-            }
+            //if (node[ix][iy].solid) {
+            //fill(white);
+            //text("s", ix*size_grid, iy*size_grid);
+            //}
             if (object[ix][iy]==currentObject) {
               pushMatrix();
               translate(ix*size_grid, iy*size_grid);
               currentObject.drawSelected();
+              if (currentObject instanceof Terminal)
+                currentObject.drawPlace(yellow);
               popMatrix();
+
               break;
             }
           }

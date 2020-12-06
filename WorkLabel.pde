@@ -1,11 +1,8 @@
-class WorkLabel extends ScaleActiveObject {
+class WorkLabel extends ActiveElement {
   Item item;
   int count;
   color colorBack;
   boolean newProduct;
-
-
-
   WorkLabel(float x, float y, float ww, float hh, Item item, int count, boolean newProduct, color colorBack) {
     super(x, y, ww, hh);
     this.item=item;
@@ -50,8 +47,8 @@ class WorkLabel extends ScaleActiveObject {
     } else {
       Terminal terminal = world.room.getObjectAtLabel(this);
       int [] place = world.room.getAbsCoordObject(terminal);
-      world.room.addItem(place[0], place[1], item.id, count);
-      terminal.removeLabel();
+      if (world.room.addItem(place[0], place[1], item.id, count))
+        terminal.removeLabel();
       /*
       for (WorkObject object : world.room.getAllObjects().getContainers()) {
        

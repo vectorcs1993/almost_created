@@ -68,10 +68,13 @@ class Graph {
     this.y=y;
   }
   Graph (int x, int y) {
-    this(x,y,false);
+    this(x, y, false);
   }
   public Graph getParent() {
     return parent;
+  }
+  boolean getFreePath(Worker worker) {
+    return getPathTo(world.room.node[x][y], world.room.node[worker.x][worker.y])!=null;
   }
 }
 class GraphList extends ArrayList <Graph> {

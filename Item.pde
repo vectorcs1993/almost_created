@@ -86,7 +86,13 @@ class ItemList extends ArrayList <Item> {
           this.remove(item);
     }
   }
-
+  public void removeItemCount (int id, int count) {
+    for (int i=0; i<count; i++) {
+      Item item = this.getItem(id);
+      if (item!=null)
+        this.remove(item);
+    }
+  }
   ComponentList getNeedItems(ComponentList items, int count) {
     ComponentList needs = new ComponentList(data.items);
     for (int part : items.sortItem()) {  //сортировка по id
@@ -103,6 +109,24 @@ class ItemList extends ArrayList <Item> {
         return false;  //количество не соответствует
     }  
     return true;
+  }
+    boolean isItems(ComponentList items) {
+    for (int part : items.sortItem()) { 
+      if (this.calculationItem(part)<items.calculationItem(part)) {
+        return false;  
+      }
+    }  
+    return true;
+  }
+ void removeItems(ComponentList items) {
+    if (!isItems(items))
+      return;
+    else { 
+      for (int part : items) {
+        if (this.getItem(part)!=null)
+          this.remove(this.getItem(part));
+      }
+    }
   }
 }
 

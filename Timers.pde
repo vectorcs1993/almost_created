@@ -14,9 +14,10 @@ class Timer {
     this.set=set;
   }
   void tick() {
-    if (millis() - timing > set) {                                                               // таймер прерывания на движение игрока 
+    if (millis() - timing > set)                                                                // таймер прерывания на движение игрока 
       flag=false;
-    }
+    else 
+    flag=true;
   }
   boolean check() {
     return flag;
@@ -40,7 +41,7 @@ class Date {
     }
   }
   long getTick() {
-    return 10;
+    return 100;
   }
   void newDay() {
    data.items.putPool(); //восполнение мировых запасов ресурсов
