@@ -27,6 +27,12 @@
 	"selected_order":"выберите заказ",
 	"selected_question":"выберите вопрос",
 
+	"job_carry":"транспортировка",
+	"job_create":"сборка",	
+	"job_develop":"инженерия",
+	"job_supply":"снабжение",
+	"job_repair":"ремонт",
+
 	"container":"контейнер", 
 	"terminal":"терминал доставки",
 	"foundry":"печь",

@@ -268,7 +268,7 @@ class JobCarryItemMap extends JobCarry {
     inObject = new JobPutInContainerItem (worker, new Item(itemMap.item), container);
   }
   String getStatus() {
-    return super.getStatus()+itemMap.name+" в: "+container.name+"\n("+getDescript()+")";
+    return super.getStatus()+itemMap.name+" в "+container.name+"\n("+getDescript()+")";
   }
   void close() {
     super.close();

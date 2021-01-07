@@ -47,19 +47,13 @@ void setup() {
   Interactive.make(this);
   interfaces = new ControlP5(this);
 
-
-  //textFont(fontMain);
   textLeading(24);
   world = new World(1, 32, 512, 320);
   setupInterface();
-  client = new Client(this, "192.168.0.10", 10002);
+  client = new Client(this, "192.168.0.7", 10002);
   connect = client.ip()!=null;
   if (!connect)
-    input("Не удалось подключиться к серверу!");
-  world.company.addWorker();
-  world.company.addWorker();
-  world.company.addWorker();
-           world.company.workers.get(0).job= new JobMove (world.company.workers.get(0), world.room.node[8][4]);
+    input("Не удалось подключиться к серверу!"); 
 }
 
 void draw() {
@@ -70,20 +64,12 @@ void draw() {
     input("Потеряно соединение с сервером");
     connect=false;
   }
- 
 }
-
-
 void keyPressed() {
- //world.company.addWorker();
 //world.pause=!world.pause;
-  
  world.room.addItem(world.getAbsCoordX(), world.getAbsCoordY(), 1, 1);
 }
-
-
 void clientEvent(Client client) {
-
   if (connect) {
 
     if (client.active()) {

@@ -5,9 +5,9 @@ class Worker extends WorkObject {
   float cost, payday;
   int x, y, speed, capacity;
   PImage sprite;
-  IntList skills;
   HashMap skills_values;
   ItemList items;
+  Profession profession;
 
   //служебные для поиска пути
   GraphList path;
@@ -15,7 +15,7 @@ class Worker extends WorkObject {
 
   Timer update, upgrade;
 
-  Worker (int id, int speed, int capacity) {
+  Worker (int id, String name, int speed, int capacity) {
     super(-1);
     this.id=id;
     this.speed=speed;
@@ -29,14 +29,9 @@ class Worker extends WorkObject {
     update = new Timer();
     upgrade = new Timer();
     items = new ItemList();
-    name = "рабочий "+id;
-    skills = new IntList ();
+    this.name = name;
+    profession = null;
     skills_values = createSkillsValues();
-    skills.append(Job.CARRY);
-    skills.append(Job.DEVELOP);
-    skills.append(Job.CREATE);
-    skills.append(Job.SUPPLY);
-    skills.append(Job.REPAIR);
   }
   void draw() {
     pushMatrix();
@@ -57,12 +52,18 @@ class Worker extends WorkObject {
     rect(x*world.size_grid, y*world.size_grid, world.size_grid, world.size_grid);
     popStyle();
   }
-  String getDescript() {
-    return name+"\n"
+  String getDescriptList() {
+    return "табельный номер: "+id+"\n"
       +"работа: "+getJobDescript()+"\n"
+      +"должность: "+getProfessionDescript()+"\n"
       +"зарплата: "+payday+" $/день"+"\n"
       +"скорость: "+speed+"\n"
-      +"грузоподъемность: "+capacity;
+      +"грузоподъемность: "+capacity+"\n"
+      +getSkills()+"\n";
+  }
+
+  String getDescript() {
+    return name+"\n"+getDescriptList();
   }
   String getJobDescript() {
     if (job!=null)
@@ -70,25 +71,48 @@ class Worker extends WorkObject {
     else
       return "нет";
   }
+  String getProfessionDescript() {
+    if (profession!=null)
+      return profession.name;
+    else
+      return "не назначена";
+  }
   HashMap createSkillsValues() {
     HashMap skills = new HashMap <Integer, Integer>(); 
     for (int i : getAllSkills())
       skills.put(i, 0);
     return skills;
   }
+  String getSkills() {
+    String string = "";
+    for (int skill : getAllSkills()) {  
+      if (skill==Job.CARRY)
+        string+=data.label.get("job_carry");
+      else if (skill==Job.DEVELOP)
+        string+=data.label.get("job_develop");
+      else if (skill==Job.SUPPLY)
+        string+=data.label.get("job_supply");
+      else if (skill==Job.REPAIR)
+        string+=data.label.get("job_repair");
+      else if (skill==Job.CREATE)
+        string+=data.label.get("job_create");
+      string+=": "+skills_values.get(skill).hashCode()+"\n";
+    }
+    return string;
+  }
+
   int [] getAllSkills() {
     return new int [] {Job.CARRY, Job.DEVELOP, Job.REPAIR, Job.CREATE, Job.SUPPLY};
   }
   void update() {
     if (!update.check() && !world.pause) {  //если пришло время обновления
       if (job!=null) {
-        if (job.isComplete()) {
-          job.close();
-          job=null;
-        } else 
+        if (job.isComplete()) 
+          cancelJob();
+        else 
         job.update();
       }
-      update.set(map(speed, 0, 10, 1000, 100));
+      update.set(map(speed, 0, 10, 800, 100));
     }
     draw();
     if (job!=null) {
@@ -98,8 +122,10 @@ class Worker extends WorkObject {
       popMatrix();
     }
   }
-
-
+  void cancelJob() {
+    job.close();
+    job=null;
+  }
   float getDirectionRad() {
     switch (direction) {
     case 1: 
@@ -120,7 +146,6 @@ class Worker extends WorkObject {
       return radians(0);
     }
   }
-
   public void moveTo(int x, int y) {
     if (!world.room.node[x][y].solid) {
       target=world.room.node[x][y];
@@ -232,8 +257,6 @@ class Worker extends WorkObject {
 
       if (!path.isEmpty()) {
         line(world.room.getAbsCoord(x, y)[0], world.room.getAbsCoord(x, y)[1], 
-
-
           world.room.getAbsCoord(path.get(path.size()-1).x, path.get(path.size()-1).y)[0], world.room.getAbsCoord(path.get(path.size()-1).x, path.get(path.size()-1).y)[1] );
         int sizeMap= path.size()-1;
         for (int i=0; i<sizeMap; i++) {
@@ -246,5 +269,47 @@ class Worker extends WorkObject {
         }
       }
     }
+  }
+}
+
+class ProfessionList extends ArrayList <Profession> {
+  void addNewProfession(String name) {
+    this.add(new Profession(name, new int [] {Job.CARRY, Job.DEVELOP, Job.CREATE, Job.SUPPLY, Job.REPAIR}));
+  }
+
+  Profession getProfessionIsName(String name) {
+    for (Profession profession : this) {
+      if (profession.name.equals(name)) 
+        return profession;
+    }
+    return null;
+  }
+
+  void removeProfessionIsName(String name) {
+    Profession profession = getProfessionIsName(name);
+    if (profession!=null)
+      this.remove(profession);
+  }
+  String [] getList() {
+    String [] list = new String [this.size()+1];
+    list[0]="не выбрано";
+    int i = 1;
+    for (Profession profession : this) {
+      list[i]=profession.name;
+      i++;
+    }
+    return list;
+  }
+}
+
+
+class Profession {
+  String name;
+  IntList jobs;
+  Profession (String name, int [] jobs) {
+    this.name = name;
+    this.jobs = new IntList();
+    for (int job : jobs)
+      this.jobs.append(job);
   }
 }

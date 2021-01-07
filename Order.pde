@@ -115,12 +115,3 @@ class OrderList extends ArrayList <Order> {
     return s.max()+1;
   }
 }
-
-
-void updateOrders() {
- 
-
-   
-   
-  
-}

@@ -1,4 +1,4 @@
-class WorkLabel extends ActiveElement {
+class WorkLabel extends ScaleActiveObject {
   Item item;
   int count;
   color colorBack;

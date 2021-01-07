@@ -166,7 +166,7 @@ class Terminal extends WorkObject {
     return blue;
   }
   String getDescriptTask() {
-    Database.DataObject item = data.items.getId(productsList.select.id);
+    Database.DataObject item = data.items.getId(mainList.select.id);
     if (item.pool>0) {
       return "количество: "+count_operation+"\n"
         +"цена: "+getDecimalFormat(count_operation*item.getCostForPool())+" $\n"
@@ -258,9 +258,9 @@ class Workbench extends Terminal {
     return product.scope_of_operation*count_operation;
   }
   String getDescriptTask() {
-    Database.DataObject product = data.items.getId(productsList.select.id);
+    Database.DataObject product = data.items.getId(mainList.select.id);
     return "операции: "+count_operation+"\n"
-      +"изделия: "+count_operation*data.items.getId(productsList.select.id).count_operation+" шт.\n"
+      +"изделия: "+count_operation*data.items.getId(mainList.select.id).count_operation+" шт.\n"
       +"трудоёмкость: "+count_operation*(product.scope_of_operation+product.reciept.getScopeTotal())+"\n";
   }
   String getProductDescript() {
@@ -314,8 +314,8 @@ class DevelopBench extends Terminal {
     return data.items.getId(product.id).reciept.getScopeTotal();
   }
   String getDescriptTask() {
-    return "сложность: "+data.items.getId(productsList.select.id).reciept.getScopeTotal()+"\n"+
-      "цена разработки: "+data.items.getId(productsList.select.id).getCostDevelop()+"$\n";
+    return "сложность: "+data.items.getId(mainList.select.id).reciept.getScopeTotal()+"\n"+
+      "цена разработки: "+data.items.getId(mainList.select.id).getCostDevelop()+"$\n";
   }
   String getProductDescript() {
     if (label==null)

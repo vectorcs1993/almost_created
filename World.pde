@@ -1,7 +1,7 @@
 
 
 class World extends ScaleActiveObject {
-  private Room room;
+   Room room;
   float size_grid;
   Company company;
   Database.DataObject newObj;
@@ -434,28 +434,30 @@ class World extends ScaleActiveObject {
         }
         worker.update();
       }
-      if (currentObject!=null) {
-        for (int ix=0; ix<sizeX; ix++) {
-          for (int iy=0; iy<sizeY; iy++) {
-            //if (node[ix][iy].solid) {
-            //fill(white);
-            //text("s", ix*size_grid, iy*size_grid);
-            //}
-            if (object[ix][iy]==currentObject) {
-              pushMatrix();
-              translate(ix*size_grid, iy*size_grid);
-              currentObject.drawSelected();
-              if (currentObject instanceof Terminal)
-                currentObject.drawPlace(yellow);
-              popMatrix();
+      if (menuMain.select.event.equals("showObjects")) {
+        if (currentObject!=null) {
+          for (int ix=0; ix<sizeX; ix++) {
+            for (int iy=0; iy<sizeY; iy++) {
+              //if (node[ix][iy].solid) {
+              //fill(white);
+              //text("s", ix*size_grid, iy*size_grid);
+              //}
+              if (object[ix][iy]==currentObject) {
+                pushMatrix();
+                translate(ix*size_grid, iy*size_grid);
+                currentObject.drawSelected();
+                if (currentObject instanceof Terminal)
+                  currentObject.drawPlace(yellow);
+                popMatrix();
 
-              break;
+                break;
+              }
             }
           }
-        }
-        for (Worker worker : company.workers) {
-          if (currentObject.equals(worker)) 
-            worker.drawSelected();
+          for (Worker worker : company.workers) {
+            if (currentObject.equals(worker)) 
+              worker.drawSelected();
+          }
         }
       }
     }

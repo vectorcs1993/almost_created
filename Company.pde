@@ -5,11 +5,12 @@ class Company {
   int buildingLimited, ordersLimited, ordersOpenLimited, exp;
   boolean gameOver;
   ArrayList <Worker> workers;
+  ProfessionList professions;
 
   Company (String name) {
     this.name=name;
     gameOver=false;
-    money=200000;
+    money=10000;
     opened=new OrderList();
     closed=new OrderList();
     failed=new OrderList();
@@ -17,8 +18,14 @@ class Company {
     ordersLimited = 36;
     ordersOpenLimited=5;
     exp = 0;
-    workers = new ArrayList <Worker>();
-    addWorker();
+    
+    professions = new ProfessionList();
+  
+   professions.addNewProfession("разнорабочий");
+   workers = new ArrayList <Worker>();
+   addWorker("Евгений Романов", 10, 6);
+   addWorker("Олег Морозов", 2, 8);
+   addWorker("Иван Пиздарван", 8,9);
   }
   public String getInfo() {
     return "наименование: "+name+"\n"+
@@ -31,10 +38,10 @@ class Company {
       "работников: "+workers.size() +"\n";
   }
   public void update() {
-
     for (Worker worker : workers) {
-      if (worker.job==null) {
-        if (worker.skills.hasValue(Job.CARRY)) { 
+      if (worker.job==null) { 
+        if (worker.profession!=null) {
+        if (worker.profession.jobs.hasValue(Job.CARRY)) { 
           //работа по переноске предметов в объект производства
           WorkObjectList objectsBenches = world.room.getAllObjects().getWorkBenches().getObjectsAllowJob().getObjectsAllowMove(worker);
           for (WorkObject object : objectsBenches) {
@@ -89,16 +96,15 @@ class Company {
             }
           }
         }
-        if (worker.skills.hasValue(Job.SUPPLY)) { 
+        if (worker.profession.jobs.hasValue(Job.SUPPLY)) { 
           //работа по выполнению закупки сырья
           WorkObject terminalPurchase = world.room.getAllObjects().getTerminals().getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
           if (terminalPurchase!=null) {    
-              worker.job = new JobInTerminal(worker, (Terminal)terminalPurchase, JobInTerminal.SUPPLY);
-              continue;
-            
+            worker.job = new JobInTerminal(worker, (Terminal)terminalPurchase, JobInTerminal.SUPPLY);
+            continue;
           }
         }
-        if (worker.skills.hasValue(Job.DEVELOP)) { 
+        if (worker.profession.jobs.hasValue(Job.DEVELOP)) { 
           //работа по разработке новых изделий
           WorkObject productDevelop = world.room.getAllObjects().getDevelopBenches().getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
           if (productDevelop!=null) {
@@ -106,7 +112,7 @@ class Company {
             continue;
           }
         }
-        if (worker.skills.hasValue(Job.CREATE)) { 
+        if (worker.profession.jobs.hasValue(Job.CREATE)) { 
           //работа по созданию изделий
           WorkObject productBench = world.room.getAllObjects().getWorkBenches().getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
           if (productBench !=null) {
@@ -117,7 +123,7 @@ class Company {
             }
           }
         }
-        if (worker.skills.hasValue(Job.REPAIR)) {
+        if (worker.profession.jobs.hasValue(Job.REPAIR)) {
           WorkObject terminalRepair = world.room.getAllObjects().getWorkObjects().getObjectsAllowJob().gerObjectAllowRepair().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
           if (terminalRepair!=null) {
             Terminal terminal = (Terminal)terminalRepair;
@@ -131,20 +137,30 @@ class Company {
         if (getPathTo(world.room.node[worker.x][worker.y], world.room.node[x][y])!=null) 
           worker.job= new JobMove (worker, world.room.node[x][y]);
       }
+      }
     }
-
-
     money=getDecimalFormat(money);
     if (money<=0) 
       gameOver=true;
     if (gameOver) 
       booster.showWarningDialog("Игра проиграна ", "WARN");
   }
-  public void addWorker() {
-
-    workers.add(new Worker(getLastWorkerId(), 10, 10));
+  public void addWorker(String name, int speed, int capacity) {
+    Worker worker = new Worker(getLastWorkerId(), name, speed, capacity);
+    worker.profession=professions.get(0);
+    workers.add(worker);
   }
-
+  public void removeWorkerId(int id) {
+    for (int i=workers.size()-1; i>=0; i--) {
+      Worker worker = workers.get(i);
+      if (workers.get(i).id==id) {
+        if (worker.job!=null) 
+          worker.cancelJob();
+        workers.remove(i);
+        break;
+      }
+    }
+  }
   public int getLastWorkerId() {
     if (workers.isEmpty())
       return 1;
@@ -153,7 +169,6 @@ class Company {
       s.append(part.id);
     return s.max()+1;
   }
-
   ArrayList <Worker> getWorkers(int x, int y) {
     ArrayList <Worker> people  = new ArrayList <Worker>();
     for (Worker worker : workers) {
@@ -169,7 +184,13 @@ class Company {
     }
     return null;
   }
-
+  Worker getWorkerIsId(int id) {
+     for (Worker worker : workers) {
+      if (worker.id==id)
+        return worker;
+    }
+    return null;
+  }
   void setExpenses() {
     float sum_money=0;
     for (Worker worker : workers) 
