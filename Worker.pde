@@ -85,24 +85,12 @@ class Worker extends WorkObject {
   }
   String getSkills() {
     String string = "";
-    for (int skill : getAllSkills()) {  
-      if (skill==Job.CARRY)
-        string+=data.label.get("job_carry");
-      else if (skill==Job.DEVELOP)
-        string+=data.label.get("job_develop");
-      else if (skill==Job.SUPPLY)
-        string+=data.label.get("job_supply");
-      else if (skill==Job.REPAIR)
-        string+=data.label.get("job_repair");
-      else if (skill==Job.CREATE)
-        string+=data.label.get("job_create");
-      string+=": "+skills_values.get(skill).hashCode()+"\n";
-    }
+    for (int skill : getAllSkills()) 
+      string+=getSkillName(skill)+": "+skills_values.get(skill).hashCode()+"\n";
     return string;
   }
-
   int [] getAllSkills() {
-    return new int [] {Job.CARRY, Job.DEVELOP, Job.REPAIR, Job.CREATE, Job.SUPPLY};
+    return new int [] {Job.CARRY, Job.DEVELOP, Job.REPAIR, Job.CREATE, Job.ASSEMBLY, Job.SUPPLY};
   }
   void update() {
     if (!update.check() && !world.pause) {  //если пришло время обновления
@@ -272,9 +260,62 @@ class Worker extends WorkObject {
   }
 }
 
+class WorkerList extends ArrayList <Worker> {
+  int getLastWorkerId() {
+    if (this.isEmpty())
+      return 1;
+    IntList s = new IntList();
+    for (Worker part : this) 
+      s.append(part.id);
+    return s.max()+1;
+  }
+  Worker getCurrentWorker() {
+    for (Worker worker : this) {
+      if (worker==world.room.currentObject)
+        return worker;
+    }
+    return null;
+  }
+  Worker getWorkerIsId(int id) {
+    for (Worker worker : this) {
+      if (worker.id==id)
+        return worker;
+    }
+    return null;
+  }
+  public void removeWorkerId(int id) {
+    for (int i=this.size()-1; i>=0; i--) {
+      Worker worker = this.get(i);
+      if (this.get(i).id==id) {
+        if (worker.job!=null) 
+          worker.cancelJob();
+        this.remove(i);
+        break;
+      }
+    }
+  }
+  WorkerList getWorkers(int x, int y) {
+    WorkerList people  = new WorkerList();
+    for (Worker worker : this) {
+      if (worker.x==x && worker.y==y)
+        people.add(worker);
+    }
+    return people;
+  }
+  WorkerList getWorkers(Profession profession) {
+    WorkerList people  = new WorkerList();
+    for (Worker worker : this) {
+      if (worker.profession==profession)
+        people.add(worker);
+    }
+    return people;
+  }
+}
+
+
 class ProfessionList extends ArrayList <Profession> {
   void addNewProfession(String name) {
-    this.add(new Profession(name, new int [] {Job.CARRY, Job.DEVELOP, Job.CREATE, Job.SUPPLY, Job.REPAIR}));
+    this.add(new Profession(name, new int [] {Job.CARRY, Job.DEVELOP, Job.CREATE, Job.ASSEMBLY, Job.SUPPLY, Job.REPAIR}));
   }
 
   Profession getProfessionIsName(String name) {

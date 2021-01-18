@@ -5,8 +5,8 @@ abstract class WorkObject {
   PImage sprite;
   String name;
   int direction;
-  static final int CONTAINER = 0, TERMINAL = 14, WORKBENCH=16, DEVELOPBENCH =17, FOUNDDRY =18, SAW_MACHINE =19, STONE_CARVER =20, WORKSHOP_MECHANICAL =21, 
-    EXTRUDER=22;
+  static final int CONTAINER = 0, TERMINAL = 14, WORKBENCH=16, DEVELOPBENCH =17, FOUNDDRY =18, SAW_MACHINE=19, WORKSHOP_MECHANICAL =21, 
+    EXTRUDER=22, WORKAREA =23;
   Job job;
   WorkObject(int id) {
     this.id=id; 
@@ -40,12 +40,9 @@ abstract class WorkObject {
     rotate(getDirectionRad());
     image(sprite, -world.size_grid/2, -world.size_grid/2);
     popMatrix();
-    if (job!=null) {
-      pushStyle();
-      tint(white, 190);
-      image(lock, -world.size_grid/2, -world.size_grid/2);
-      popStyle();
-    }
+    if (job!=null) 
+     drawBottomSprite(lock);
+    
   }
   void drawSelected() {
     pushStyle();
@@ -55,7 +52,13 @@ abstract class WorkObject {
     rect(0, 0, world.size_grid, world.size_grid);
     popStyle();
   }
-
+  void drawBottomSprite(PImage sprite) {
+    pushStyle();
+      tint(white, 190);
+      image(sprite, -world.size_grid/2, -world.size_grid/2);
+      popStyle(); 
+  }
+  
   void drawCount(int count) {
     pushMatrix();
     translate(-world.size_grid/2, -world.size_grid/2);
@@ -68,7 +71,7 @@ abstract class WorkObject {
     textSize(10);
     textAlign(RIGHT, BOTTOM);
     fill(white);
-    text(count, world.size_grid-3, world.size_grid+2);
+    text(count, world.size_grid-3, world.size_grid+1);
     popStyle();
     popMatrix();
   }
@@ -128,11 +131,10 @@ class ItemMap extends WorkObject {
   }
   void draw() {
     super.draw();
-    drawCount(count);
+    if (count>1)
+      drawCount(count);
   }
 }
-
-
 class Terminal extends WorkObject {
   float hp, hp_max, wear, speed;
   Item product;
@@ -176,7 +178,7 @@ class Terminal extends WorkObject {
   }
   String getProductDescript() {
     if (label==null)
-      return "доставка товара: "+product.name+" ("+progress+"/"+getMaxProgress()+")";
+      return "доставка товара: "+product.name+"\nпроцесс: "+progress+"/"+getMaxProgress()+"";
     else 
     return product.name+" доставлен";
   }
@@ -224,10 +226,10 @@ class Terminal extends WorkObject {
     progress=0;
     count_operation=0;
   }
-
   public void draw() {
     super.draw();
     if (product!=null) {
+      drawBottomSprite(data.items.getId(product.id).sprite);
       if (progress>0)
         drawStatus(5, progress, getMaxProgress(), green, red);
     }
@@ -235,18 +237,19 @@ class Terminal extends WorkObject {
       drawStatus(9, hp, hp_max, blue, red);
   }
   public String getDescript() {
-    return "наименование"+": "+name+"\n"+
-      "состояние"+": "+getDecimalFormat(hp)+"/"+hp_max+getIsJobLock();
+    return name+"\n"+
+      "состояние"+": "+getDecimalFormat(hp)+"/"+hp_max+"\n"+
+      "требуемый навык"+": "+getSkillName(data.objects.getId(id).type)+
+      getIsJobLock();
   }
   protected String getCharacters() {
     return "скорость"+": "+map(speed, 1000, 0, 0, 100)+"\n"+
       "износостойкость"+": "+map(wear, 0.01, 0.5, 100, 0);
   }
 }
-
 class Workbench extends Terminal {
   private ItemList components;
-
+  
   Workbench (int id) {
     super(id);
     components = new ItemList();
@@ -265,9 +268,12 @@ class Workbench extends Terminal {
   }
   String getProductDescript() {
     if (label==null)
-      return "изделие: "+product.name+" ("+progress+"/"+getMaxProgress()+")"+"\n";
+      return "изделие: "+product.name;
     else 
     return product.name+" изготовлено";
+  }        
+  String getDescriptProgress() {    
+    return "процесс: "+progress+"/"+getMaxProgress();
   }
   void removeLabel() {
     super.removeLabel();
@@ -293,10 +299,15 @@ class Workbench extends Terminal {
     return true;
   }
   void finish() {  
-    for (int part : components.sortItem()) {
+    for (int part : components.sortItem()) 
       world.room.addItem(this.getX(), this.getY(), part, components.calculationItem(part));
-    }
     components.clear();
+  }
+  int getNeedItemCount(int id) {
+    if (product!=null && label==null) {
+      return product.reciept.calculationItem(id)*count_operation-components.calculationItem(id);
+    } else
+      return -1;
   }
 }
 
@@ -319,7 +330,7 @@ class DevelopBench extends Terminal {
   }
   String getProductDescript() {
     if (label==null)
-      return "чертеж на: "+product.name+" ("+progress+"/"+getMaxProgress()+")"+"\n";
+      return "чертеж на: "+product.name+"\nпроцесс: "+progress+"/"+getMaxProgress()+"\n";
     else 
     return product.name+" разработан";
   }
@@ -332,11 +343,11 @@ class Container extends WorkObject {
   Container (int id) {
     super(id);
     items = new ItemList();
-    capacity = 100;
+    capacity = 400;
   }
   public String getDescript() {
-    return "наименование"+": "+name+"\n"+
-      "вместимость: "+getCapacity()+"/"+capacity;
+    return name+"\n"+
+      "вместимость: "+getCapacity()+"/"+capacity+getIsJobLock();
   }
   public int getCapacity() {
     int capacity = 0;
@@ -378,7 +389,6 @@ class Container extends WorkObject {
     drawIndicator(false);
   }
 }
-
 class WorkObjectList extends ArrayList <WorkObject> {
 
   WorkObject getItemById(int id) {
@@ -426,15 +436,14 @@ class WorkObjectList extends ArrayList <WorkObject> {
     }
     return null;
   }
-
   WorkObjectList getObjectsAllowMove(Worker worker) {  //возвращает объекты для которых разрешено перемещение
     WorkObjectList objects= new WorkObjectList();
     for (WorkObject object : this) {
       if (object instanceof Terminal) {
         int [] place = world.getPlace(object.getX(), object.getY(), object.direction);
         if (place[0]>=0 && place[1]>=0) {
-        if (getPathTo(world.room.node[worker.x][worker.y], world.room.node[place[0]][place[1]])!=null) 
-          objects.add(object);
+          if (getPathTo(world.room.node[worker.x][worker.y], world.room.node[place[0]][place[1]])!=null) 
+            objects.add(object);
         }
       } else {
         int [] xyObject = world.room.getAbsCoordObject(object);
@@ -448,7 +457,6 @@ class WorkObjectList extends ArrayList <WorkObject> {
     }
     return objects;
   }
-
   WorkObjectList getObjectsAllowJob() {  //возвращает объекты незаблокированные другой работой
     WorkObjectList objects= new WorkObjectList();
     for (WorkObject object : this) {
@@ -485,13 +493,21 @@ class WorkObjectList extends ArrayList <WorkObject> {
     }
     return objects;
   }
+  WorkObjectList getObjectsEntryItems() {
+    WorkObjectList objects = new WorkObjectList();
+    for (WorkObject object : this) {
+      if (object instanceof Container || object instanceof ItemMap) 
+        objects.add(object);
+    }
+    return objects;
+  }
   WorkObjectList getContainersFreeCapacity() {
     WorkObjectList objects = new WorkObjectList();
     for (WorkObject object : this) {
       if (object instanceof Container) {
-         Container container = (Container)object;
-         if (container.getFreeCapacity()>0)
-        objects.add(object);
+        Container container = (Container)object;
+        if (container.getFreeCapacity()>0)
+          objects.add(object);
       }
     }
     return objects;
@@ -509,6 +525,16 @@ class WorkObjectList extends ArrayList <WorkObject> {
     for (WorkObject object : this) {
       if (!(object instanceof Workbench) && !(object instanceof DevelopBench)) 
         objects.add(object);
+    }
+    return objects;
+  }
+  WorkObjectList getWorkBenches(int type) {
+    WorkObjectList objects = new WorkObjectList();
+    for (WorkObject object : this) {
+      if (object instanceof Workbench) {
+        if (data.objects.getId(((Workbench)object).id).type==type)
+          objects.add(object);
+      }
     }
     return objects;
   }
@@ -536,7 +562,7 @@ class WorkObjectList extends ArrayList <WorkObject> {
     }
     return objects;
   }
-   WorkObjectList getNoItemMap() {
+  WorkObjectList getNoItemMap() {
     WorkObjectList objects = new WorkObjectList();
     for (WorkObject object : this) {
       if (!(object instanceof ItemMap)) 

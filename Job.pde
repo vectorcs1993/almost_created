@@ -48,11 +48,13 @@ class JobInTerminal extends Job {
   }
   String getStatus() {
     if (work==SUPPLY)
-      return "закупает "+terminal.product.name;
+      return data.label.get("job_supplies")+" "+terminal.product.name;
     else if (work==DEVELOP)
-      return "разрабатывает чертеж "+terminal.product.name;
+      return data.label.get("job_develops")+" "+terminal.product.name;
     else if (work== CREATE)
-      return "создает "+terminal.product.name;
+      return data.label.get("job_created")+" "+terminal.product.name;
+       else if (work== ASSEMBLY)
+      return data.label.get("job_assemble")+" "+terminal.product.name;
     else 
     return null;
   }
@@ -82,7 +84,7 @@ class JobPutInContainerItem extends JobProgress {
     this.container=container;
   }
   String getName() {
-    return "кладет предмет";
+    return data.label.get("job_puts");
   }
   void onAction() {
     for (int i = worker.items.size()-1; i>=0; i--) {
@@ -113,7 +115,7 @@ class JobPutInBenchItem extends JobProgress {
     this.bench=bench;
   }
   String getName() {
-    return "кладет предмет";
+    return data.label.get("job_puts");
   }
   void onAction() {
     bench.components.addAll(worker.items);
@@ -127,15 +129,17 @@ class JobPutInBenchItem extends JobProgress {
 }
 class JobPutInWorkerItemMap extends JobProgress {
   ItemMap itemMap;
-  JobPutInWorkerItemMap(Worker worker, ItemMap itemMap) {
+  int needCount;
+  JobPutInWorkerItemMap(Worker worker, ItemMap itemMap, int needCount) {
     super(worker, itemMap, 0, 10);
     this.itemMap = itemMap;
+    this.needCount=needCount;
   }
   String getName() {
-    return "берет предмет";
+    return data.label.get("job_takes");
   }
   void onAction() {
-    int count_remove = constrain(this.worker.capacity, 1, itemMap.count);
+    int count_remove = constrain(this.worker.capacity, 1, constrain(itemMap.count, 1, needCount));
     worker.items.addItemCount(new Item(itemMap.item), count_remove);
     itemMap.count-=count_remove;
     if (itemMap.count<=0) {
@@ -158,7 +162,7 @@ class JobPutInWorkerItem extends JobProgress {
     this.container = container;
   }
   String getName() {
-    return "берет предмет";
+    return data.label.get("job_takes");
   }
   void onAction() {
     worker.items.addItemCount(new Item(item), count);
@@ -180,7 +184,7 @@ class JobCarry extends Job {
     return exit;
   }
   String getStatus() {
-    return "переносит ";
+    return data.label.get("job_transfers");
   }
   void update() {
     this.worker.work(Job.CARRY);
@@ -264,11 +268,11 @@ class JobCarryItemMap extends JobCarry {
     Graph targetContainer = getNeighboring(world.room.node[container.getX()][container.getY()], null).getGraphFreePath(worker.x, worker.y);
     moveToObject = new JobMove(worker, targetContainer);
     move = moveFromObject = new JobMove(worker, targetItemMap);
-    inWorker = new JobPutInWorkerItemMap (worker, itemMap);
+    inWorker = new JobPutInWorkerItemMap (worker, itemMap, worker.capacity);
     inObject = new JobPutInContainerItem (worker, new Item(itemMap.item), container);
   }
   String getStatus() {
-    return super.getStatus()+itemMap.name+" в "+container.name+"\n("+getDescript()+")";
+    return super.getStatus()+" "+itemMap.name+" в "+container.name+"\n("+getDescript()+")";
   }
   void close() {
     super.close();
@@ -283,7 +287,7 @@ class JobCarryItemForBench extends JobCarry {
   Workbench bench;
   Container container;
 
-  JobCarryItemForBench(Worker worker, int item, Container container, Workbench bench) {
+  JobCarryItemForBench(Worker worker, int item, int needCount, Container container, Workbench bench) {
     super(worker);
     this.item=item;
     this.container=container;
@@ -295,11 +299,11 @@ class JobCarryItemForBench extends JobCarry {
     Graph targetBench = getNeighboring(world.room.node[bench.getX()][bench.getY()], null).getGraphFreePath(worker.x, worker.y);
     moveToObject = new JobMove(worker, targetBench);
     move = moveFromObject = new JobMove(worker, targetContainer);
-    inWorker = new JobPutInWorkerItem (worker, item, 1, container);
+    inWorker = new JobPutInWorkerItem (worker, item, constrain(worker.capacity, 1, constrain(container.items.calculationItem(item), 1, needCount)), container);
     inObject = new JobPutInBenchItem (worker, new Item(item), bench);
   }
   String getStatus() {
-    return super.getStatus()+data.items.getId(item).name+" из: "+container.name+" в: "+bench.name+
+    return super.getStatus()+" "+data.items.getId(item).name+" из "+container.name+" в "+bench.name+
       "\n("+getDescript()+")";
   }
   void close() {
@@ -314,7 +318,7 @@ class JobCarryItemMapForBench extends JobCarry {
   int item;
   Workbench bench;
   ItemMap itemMap;
-  JobCarryItemMapForBench(Worker worker, ItemMap itemMap, Workbench bench) {
+  JobCarryItemMapForBench(Worker worker, ItemMap itemMap, int needCount, Workbench bench) {
     super(worker);
     this.itemMap=itemMap;
     this.itemMap.job=this;
@@ -324,11 +328,11 @@ class JobCarryItemMapForBench extends JobCarry {
     Graph targetBench = getNeighboring(world.room.node[bench.getX()][bench.getY()], null).getGraphFreePath(worker.x, worker.y);
     moveToObject = new JobMove(worker, targetBench);
     move = moveFromObject = new JobMove(worker, targetItemMap);
-    inWorker = new JobPutInWorkerItemMap (worker, itemMap);
+    inWorker = new JobPutInWorkerItemMap (worker, itemMap, needCount);
     inObject = new JobPutInBenchItem (worker, new Item(item), bench);
   }
   String getStatus() {
-    return super.getStatus()+data.items.getId(item).name+" в: "+bench.name+
+    return super.getStatus()+" "+data.items.getId(item).name+" в "+bench.name+
       "\n("+getDescript()+")";
   }
   void close() {
@@ -353,7 +357,7 @@ class JobRepair extends Job {
     return terminal.hp>=100;
   }
   String getStatus() {
-    return "ремонтирует объект: "+terminal.name;
+    return data.label.get("job_repaired")+" "+terminal.name;
   }
   void update() {
     if (!moveToObject.isComplete())

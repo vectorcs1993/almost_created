@@ -1,7 +1,7 @@
 
 
 class World extends ScaleActiveObject {
-   Room room;
+  Room room;
   float size_grid;
   Company company;
   Database.DataObject newObj;
@@ -37,10 +37,7 @@ class World extends ScaleActiveObject {
   }
   public void update() {
     company.update();
-
-
     if (!pause) {
-
       room.update();
       for (Timer part : timers)   //отсчет таймеров
         part.tick();
@@ -75,11 +72,10 @@ class World extends ScaleActiveObject {
           company.failed.add(order);
         }
         cost = getDecimalFormat(cost);
-        booster.showInfoDialog("следующие заказы просрочились: "+ordersNames+" на сумму: "+cost+" $");
+        dialog.showInfoDialog("следующие заказы просрочились: "+ordersNames+" на сумму: "+cost+" $");
       }
     }
   }
-
   public void draw() {
     if (room!=null) {
       pushMatrix();
@@ -106,9 +102,6 @@ class World extends ScaleActiveObject {
       popMatrix();
     }
   }
-
-
-
   public String getObjectInfo() {
     if (room.isHoverLabel()) {
       WorkLabel label = room.getHoverLabel();
@@ -131,15 +124,24 @@ class World extends ScaleActiveObject {
     else 
     return new int [] {x-1, y};
   }
-
   public WorkObject getObject() {
     if (hover) {
-      if (company.getWorkers(getAbsCoordX(), getAbsCoordY()).isEmpty())
+      if (company.workers.getWorkers(getAbsCoordX(), getAbsCoordY()).isEmpty())
         return room.object[getAbsCoordX()][getAbsCoordY()];
       else
-        return company.getWorkers(getAbsCoordX(), getAbsCoordY()).get(0);
+        return company.workers.getWorkers(getAbsCoordX(), getAbsCoordY()).get(0);
     } else 
     return null;
+  }
+
+  void selectCurrentObject() {
+    if (room!=null) {
+      WorkObject object = getObject();
+      if (object!=null) 
+        room.currentObject=object;
+      else
+        room.currentObject=null;
+    }
   }
   public void mousePressed() {
     if (input) {
@@ -147,15 +149,9 @@ class World extends ScaleActiveObject {
         int _x=getAbsCoordX();
         int _y=getAbsCoordY();
         if (mouseButton==LEFT) {
-          if (menuMain.select.event.equals("showObjects")) {
-            if (room!=null) {
-              WorkObject object = getObject();
-              if (object!=null) 
-                room.currentObject=object;
-              else
-                room.currentObject=null;
-            }
-          } else if (menuMain.select.event.equals("showBuildings")) {
+          if (menuMain.select.event.equals("showObjects")) 
+            selectCurrentObject();
+          else if (menuMain.select.event.equals("showBuildings")) {
             if (buildings.select!=null) {
               Database.DataObject newObj = data.objects.getId(buildings.select.id);
               if (newObj.cost<=company.money) {
@@ -167,12 +163,15 @@ class World extends ScaleActiveObject {
                       world.room.object[_x][_y]=newObject;
                     }
                   } else 
-                  booster.showInfoDialog("превышен лимит построек");
+                  dialog.showInfoDialog(data.label.get("message_exceeded_the_limit_of_buildings"));
                 } else 
-                booster.showInfoDialog("невозможно разместить");
+                dialog.showInfoDialog(data.label.get("message_it_is_impossible_to_place"));
               } else 
-              booster.showInfoDialog("не хватает средств");
+              dialog.showInfoDialog(data.label.get("message_not_enough_funds"));
             }
+          } else {      //сброс в режим просмотра объектов
+            menuMain.setSelect(menuMain.buttons.get(0));
+            selectCurrentObject();
           }
         }
       }
@@ -197,8 +196,8 @@ class World extends ScaleActiveObject {
       }
       object[3][3] = new Terminal(WorkObject.TERMINAL);
       object[4][4] = new Workbench(WorkObject.WORKBENCH);
-      object[7][4] = new Workbench(WorkObject.SAW_MACHINE);
-      object[7][5] = new Workbench(WorkObject.WORKSHOP_MECHANICAL);
+      object[7][4] = new Workbench(WorkObject.FOUNDDRY);
+      object[8][4] = new Workbench(WorkObject.WORKSHOP_MECHANICAL);
       object[5][4] = new DevelopBench(WorkObject.DEVELOPBENCH);
       object[6][4] = new Container(0);
     }
@@ -229,7 +228,6 @@ class World extends ScaleActiveObject {
       return null;
     }
     int [] getRandomCoord() { //доделать
-
       for (int ix=0; ix<sizeX; ix++) {
         for (int iy=0; iy<sizeY; iy++) {
           WorkObject current = this.object[ix][iy];
@@ -240,7 +238,6 @@ class World extends ScaleActiveObject {
       }
       return null;
     }
-
     public Terminal getObjectAtLabel(WorkLabel label) {
       for (WorkObject part : getAllObjects().getWorkObjects()) {
         Terminal terminal = (Terminal)part; 
@@ -275,41 +272,68 @@ class World extends ScaleActiveObject {
         }
       }
     }
-
     public void setActiveLabels(boolean active) {
       for (WorkLabel part : getAllLabels()) 
         part.setActive(active);
     }
-
-    public boolean addItem(int cx, int cy, int id, int count) {
+    public int addItem(int cx, int cy, int id, int count) {
       int [] neighbors = new int [] {59, 49, 61, 71, 48, 50, 72, 70};
+      int stack = data.items.getId(id).getStack();
       for (int i=0; i<neighbors.length; i++) {  //цикл перебирает все соседник клетки в соответствией с матрицей размещения
         int ix=cx+matrixShearch[neighbors[i]][0]; //корректировка координаты х
         int iy=cy+matrixShearch[neighbors[i]][1]; //корректировка координаты у
-        if (ix<0 || iy<0)  //если алгоритм выходит за пределы карты
-          continue;
-        if (object[ix][iy]==null) {
-          object[ix][iy] = new ItemMap(id, count);
-          return true;
+        if (ix<0 || iy<0 || ix>=sizeX || iy>=sizeY)  //если алгоритм выходит за пределы карты
+          continue;  //переходим к следующей клетке
+        if (object[ix][iy]==null) { //если клетка пустая,
+          if (stack>=count) { //и если количество предметов умещается в стэк 
+            object[ix][iy] = new ItemMap(id, count); //то создает новый объект предмета на карте
+            return 0;
+          } else {
+            object[ix][iy] = new ItemMap(id, stack); //то создает новый объект предмета на карте
+            count-=stack;
+          }
         } else {
-
           if (object[ix][iy] instanceof ItemMap) {
             ItemMap itemMap = (ItemMap) object[ix][iy];
             if (itemMap.item==id) {
-              itemMap.count+=count;
-              return true;
+              int newCount = itemMap.count+count;
+              if (newCount>stack) {        //проверяем не переполнен ли стэк объекта itemMap, если да, то
+                itemMap.count=stack;      //устанавливаем значение itemMap.count равным значению стэка вложенного предмета
+                count=newCount-stack;      //вычисляем сколько предметов осталось после размещения
+              } else {              //если стэк объекта itemMap не переполнен
+                itemMap.count=newCount;          //устанавливает значение count
+                return 0;              //продолжает поиск что бы разместить оставшиеся предметы
+              }
             }
           }
         }
       }
-      return false;
+      return count;
     }
-
-    public ItemList getItems(int filter) {
+    public ItemList getItemsIsContainers(int filter) {
       ItemList list = new ItemList ();
-      for (WorkObject object : getAllObjects().getContainers()) {
-        if (!((Container)object).items.isEmpty())
-          list.addAll(((Container)object).items);
+      for (WorkObject object : getAllObjects().getObjectsEntryItems()) {
+        if (object instanceof Container) {
+          if (!((Container)object).items.isEmpty())
+            list.addAll(((Container)object).items);
+        } 
+        /*
+        else if (object instanceof ItemMap) {
+         for (int i=0; i<((ItemMap)object).count; i++)
+         list.add(new Item(((ItemMap)object).item));
+         }
+         */
+      }
+      return list;
+    }
+    ComponentList getItemsAll() {
+      ComponentList list = new ComponentList (data.items);
+      for (WorkObject object : getAllObjects().getObjectsEntryItems()) {
+        if (object instanceof Container) {
+          if (!((Container)object).items.isEmpty())
+            list.addAll(((Container)object).items.getComponentList());
+        } else if (object instanceof ItemMap) 
+          list.setComponent(((ItemMap)object).item, ((ItemMap)object).count);
       }
       return list;
     }
@@ -322,7 +346,7 @@ class World extends ScaleActiveObject {
     }
     int getShearchInItem(IntList items) {
       for (int part : items) { 
-        if (world.room.getItems(Item.ALL).getItem(part)!=null) 
+        if (world.room.getItemsIsContainers(Item.ALL).getItem(part)!=null) 
           return part;
       }
       return -1;
@@ -418,7 +442,6 @@ class World extends ScaleActiveObject {
           popStyle();
           WorkObject current = object[ix][iy];
           if (current!=null) {
-
             current.draw();
             if (!(current instanceof ItemMap))
               node[ix][iy].solid=true;
@@ -438,10 +461,6 @@ class World extends ScaleActiveObject {
         if (currentObject!=null) {
           for (int ix=0; ix<sizeX; ix++) {
             for (int iy=0; iy<sizeY; iy++) {
-              //if (node[ix][iy].solid) {
-              //fill(white);
-              //text("s", ix*size_grid, iy*size_grid);
-              //}
               if (object[ix][iy]==currentObject) {
                 pushMatrix();
                 translate(ix*size_grid, iy*size_grid);
@@ -449,13 +468,25 @@ class World extends ScaleActiveObject {
                 if (currentObject instanceof Terminal)
                   currentObject.drawPlace(yellow);
                 popMatrix();
-
                 break;
               }
             }
           }
           for (Worker worker : company.workers) {
             if (currentObject.equals(worker)) 
+              worker.drawSelected();
+          }
+        }
+      } else if (menuMain.select.event.equals("showMenuCompany")) {
+        if (menuCompany.select.event.equals("getWorkers")) {
+          if (mainList.select!=null) {
+            Worker worker = world.company.workers.getWorkerIsId(mainList.select.id);
+            if (worker!=null)
+              worker.drawSelected();
+          }
+        } else if (menuCompany.select.event.equals("getProfessions")) {
+          if (mainList.select!=null) {  
+            for (Worker worker : world.company.workers.getWorkers(world.company.professions.getProfessionIsName(mainList.select.label)))
               worker.drawSelected();
           }
         }

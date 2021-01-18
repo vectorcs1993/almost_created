@@ -103,6 +103,13 @@ class ItemList extends ArrayList <Item> {
     }  
     return needs;
   }
+  ComponentList getComponentList() {
+    ComponentList items = new ComponentList(data.items);
+    for (Item part : this)  
+      items.append(part.id);
+     
+    return items;
+  }
   boolean isItems(ComponentList items, int count) {
     for (int part : items.sortItem()) {  //сортировка по id
       if (this.calculationItem(part)<items.calculationItem(part)*count)  //проверка на соответствие количества
@@ -110,15 +117,15 @@ class ItemList extends ArrayList <Item> {
     }  
     return true;
   }
-    boolean isItems(ComponentList items) {
+  boolean isItems(ComponentList items) {
     for (int part : items.sortItem()) { 
       if (this.calculationItem(part)<items.calculationItem(part)) {
-        return false;  
+        return false;
       }
     }  
     return true;
   }
- void removeItems(ComponentList items) {
+  void removeItems(ComponentList items) {
     if (!isItems(items))
       return;
     else { 
@@ -273,7 +280,6 @@ class ComponentList extends IntList {
     }  
     return true;
   }
-
   void removeItems(ComponentList items) {
     if (!isComponents(items))
       return;
@@ -283,5 +289,16 @@ class ComponentList extends IntList {
           this.removeValue(part);
       }
     }
+  }
+  void addNewProducts(ComponentList items) {
+    for (int part : items) {
+      Database.DataObject component =  data.getId(part);
+      if (component.reciept!=null && !this.hasValue(part))
+        this.append(part);
+    }
+  }
+   void addAll(ComponentList items) {
+    for (int part : items) 
+        this.append(part);
   }
 }

@@ -7,7 +7,7 @@ import java.util.Map;
 int _sizeX=800;
 int _sizeY=600;
 World world;
-UiBooster booster;
+UiBooster dialog;
 Client client;
 boolean connect;
 
@@ -29,7 +29,7 @@ void settings() {
   size(_sizeX, _sizeY, JAVA2D);
   noSmooth();
 
-  booster = new UiBooster();
+  dialog = new UiBooster();
 }
 
 
@@ -67,7 +67,7 @@ void draw() {
 }
 void keyPressed() {
 //world.pause=!world.pause;
- world.room.addItem(world.getAbsCoordX(), world.getAbsCoordY(), 1, 1);
+ world.room.addItem(world.getAbsCoordX(), world.getAbsCoordY(), 1, 10);
 }
 void clientEvent(Client client) {
   if (connect) {

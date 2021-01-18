@@ -2,7 +2,7 @@ abstract class Job {   //главный класс работы
   String name;
   Worker worker;
   boolean exit;
-  final static int CARRY=0, DEVELOP=1, REPAIR=2, CREATE=5, SUPPLY=7;
+  final static int CARRY=0, DEVELOP=1, REPAIR=2, CREATE=5, ASSEMBLY=6, SUPPLY=7;
   Job(Worker worker) {
     this.worker=worker;
     name="работа";
@@ -57,4 +57,25 @@ abstract class JobProgress extends Job { //промежуточный класс
     super.close();
     process=0;
   }
+}
+
+
+
+
+String getSkillName(int skill) {
+  String string = "неизвестно";
+  if (skill==Job.CARRY)
+    string=data.label.get("job_carry");
+  else if (skill==Job.DEVELOP)
+    string=data.label.get("job_develop");
+  else if (skill==Job.SUPPLY)
+    string=data.label.get("job_supply");
+  else if (skill==Job.REPAIR)
+    string=data.label.get("job_repair");
+  else if (skill==Job.CREATE)
+    string=data.label.get("job_create");
+  else if (skill==Job.ASSEMBLY)
+    string=data.label.get("job_assembly");
+
+  return string;
 }

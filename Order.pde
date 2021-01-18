@@ -21,13 +21,13 @@ class Order {
   String getDescript() {
     return "награда: "+cost+" $\n"+
       "опыт: "+exp+"\n"+
-      "количество: "+world.room.getItems(Item.ALL).calculationItem(product.id)+"/"+count+"\n"+
+      "количество: "+world.room.getItemsIsContainers(Item.ALL).calculationItem(product.id)+"/"+count+"\n"+
       "срок: "+date.getDateNotTime()+" ("+day+" дня/дней)"+"\n"+
       "сложность: "+str((product.scope_of_operation+product.reciept.getScopeTotal()))+"\n"+
       "трудоемкость: "+str(count*(product.scope_of_operation+product.reciept.getScopeTotal()))+"\n";
   }
   public boolean isComplete() {
-    return  world.room.getItems(Item.ALL).calculationItem(product.id)>=count;
+    return  world.room.getItemsIsContainers(Item.ALL).calculationItem(product.id)>=count;
   }
   public boolean isFail(Date date) {
     if ((this.date.month==date.month && this.date.day>date.day) || this.date.month>date.month || this.date.year>date.year)

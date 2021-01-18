@@ -26,8 +26,6 @@ class Database {
       }
     }
 
-
-
     db = new SQLite(context, "data/objects.db" );  //открывает файл базы данных
     db.setDebug(false);
     loadDatabase(items, "items");
@@ -36,7 +34,6 @@ class Database {
   public DatabaseObjectList getItems() {
     return items;
   }
-
   class DatabaseObjectList extends ArrayList <DataObject> {
     public DataObject getId(int id) {
       for (DataObject part : this) {
@@ -79,7 +76,7 @@ class Database {
     protected final String name;
     protected String description;
     protected ComponentList reciept, products;
-    protected int scope_of_operation, count_operation, weight, pool, maxPool;
+    int scope_of_operation, count_operation, weight, pool, maxPool, work_object, type;
     protected float cost;
     DataObject(int id, String name, PImage sprite) {
       this.id=id;
@@ -88,9 +85,10 @@ class Database {
       description="";
       count_operation=weight=1;
       scope_of_operation=10;
-      cost=0;
+      cost=type=0;
       reciept=null;
       products=new ComponentList(items);
+      work_object=-1;
     }
     float getCostForPool() {
       return cost*maxPool/pool;
@@ -105,15 +103,16 @@ class Database {
       if (!products.hasValue(id))
         products.append(id);
     }
-    
+
     float getCostDevelop() {
       if (reciept!=null) 
         return (reciept.getScopeTotal()*10)/2; 
       else 
       return 0;
     }
-    
-    
+    int getStack() {
+      return 100/weight;
+    }
   }
 
 
@@ -133,11 +132,11 @@ class Database {
       return new Workbench(obj.id);
     case WorkObject.SAW_MACHINE: 
       return new Workbench(obj.id);
-    case WorkObject.STONE_CARVER: 
-      return new Workbench(obj.id);
     case WorkObject.WORKSHOP_MECHANICAL: 
       return new Workbench(obj.id);
-      case WorkObject.EXTRUDER: 
+    case WorkObject.EXTRUDER: 
+      return new Workbench(obj.id);
+    case WorkObject.WORKAREA: 
       return new Workbench(obj.id);
     }
     return null;
@@ -154,6 +153,7 @@ class Database {
           DataObject obj = new DataObject(db.getInt("id"), label.get(db.getString("name")), 
             loadImage("data/sprites/"+db.getString("sprite")+".png"));
           object=obj;
+          object.type=db.getInt("job");
           if (db.getString("parameters")!=null) { //расшифровка параметров
             JSONArray parse = parseJSONArray(db.getString("parameters"));
             for (int i = 0; i < parse.size(); i++) {
@@ -169,8 +169,11 @@ class Database {
           DataObject obj = new DataObject(db.getInt("id"), label.get(db.getString("name")), 
             loadImage("data/sprites/items/"+db.getString("sprite")+".png"));
           object=obj;
+          object.weight=db.getInt("weight"); 
+          if (db.getInt("work_object")!=0) 
+            object.work_object=db.getInt("work_object");
+          
           if (db.getString("reciept")!=null) {  //заполнение рецепта
-            object.weight=db.getInt("weight"); //определяет вес предмета
             object.count_operation=db.getInt("count_operation"); //определяет количество предмета изготовленного за 1 операцию
             object.reciept = new ComponentList(items);
             JSONArray parse = parseJSONArray(db.getString("reciept"));
