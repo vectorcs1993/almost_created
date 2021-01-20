@@ -86,6 +86,14 @@
 	"disk_stamped":"диск штампованный",
 	"radiator_engine_cooling":"радиатор двигателя",
 	"cowling":"капот",
+	"battery":"аккумулятор",
+	"engine_crank":"шатун коленвала",
+	"engine_block":"блок цилиндров",
+	"engine_piston":"поршень двигателя",
+	"engine_carter":"поддон двигателя",
+	"engine_crankshaft":"вал коленчатый",
+	"block_fuses":"блок предохранителей",
+	"block_relay":"блок реле",
 
 
 	"no_text":"нет описания",

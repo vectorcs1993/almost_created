@@ -3,18 +3,20 @@ abstract class Job {   //главный класс работы
   Worker worker;
   boolean exit;
   final static int CARRY=0, DEVELOP=1, REPAIR=2, CREATE=5, ASSEMBLY=6, SUPPLY=7;
+  
   Job(Worker worker) {
     this.worker=worker;
     name="работа";
     exit=false;
   }
   abstract boolean isComplete();
+  abstract int getType();
   abstract void update();
   abstract String getStatus();
   int getProcess() {
     return 0;
   }
-
+  
   int getProcessMax() {
     return 0;
   }

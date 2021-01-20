@@ -111,7 +111,7 @@ void setupInterface() {
         useItem = true;
         else
           purchase=true;
-        if (useItem)   
+        if (useItem || develop)   
         start=true;
         else if (purchase) {
           float sum_money = product.getCostForPool()*terminal.count_operation;
@@ -122,13 +122,6 @@ void setupInterface() {
             start=true;
           } else
             dialog.showInfoDialog("не хватает средств");
-        } else if (develop) {
-          float cost_dev = product.getCostDevelop();
-          if (cost_dev<world.company.money) {
-            world.company.money-=cost_dev;
-            start=true;
-          } else 
-          dialog.showInfoDialog("не хватает средств");
         }
         if (start) {
           terminal.product=new Item(product.id);
@@ -384,7 +377,7 @@ void setupInterface() {
   );
   buttonRecrutAdd = new SimpleButton(528, 520, 160, 32, "нанять рабочего", new Runnable() {
     public void run() {
-      world.company.addWorker("Виктор Пелевин", 5, 6);
+      world.company.addWorker("Виктор Пелевин", 6);
     }
   }
   );
@@ -527,13 +520,20 @@ void taskMainControl(Terminal terminal) {
           taskControl(terminal);
           ComponentList reciept = data.items.getId(mainList.select.id).reciept;
           if (reciept!=null) {
+            if (terminal instanceof Workbench) {
             menuReciept.control();
             if (menuReciept.select.event.equals("showResources")) 
               componentsList.loadReciept(reciept.getResources().getMult(terminal.count_operation));
             else if (menuReciept.select.event.equals("showComponents")) 
               componentsList.loadReciept(reciept.getMult(terminal.count_operation));  
             componentsList.setActive(true);
+          } else {
+            showScaleText("компоненты:", 524, 312);
+            componentsList.loadReciept(reciept.getMult(terminal.count_operation));  
+            componentsList.setActive(true); 
           }
+
+        }
         }
       } else 
       showScaleText("недоступно", 522, 80);

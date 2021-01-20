@@ -23,9 +23,9 @@ class Company {
 
     professions.addNewProfession("разнорабочий");
     workers = new WorkerList();
-    addWorker("Виктор Функ", 10, 6);
-    addWorker("Михаил Маричев", 10, 8);
-    addWorker("Аким Мульцин", 10, 6);
+    addWorker("Виктор Функ", 6);
+    addWorker("Михаил Маричев", 8);
+    addWorker("Аким Мульцин", 6);
   }
   public String getInfo() {
     return "наименование: "+name+"\n"+
@@ -163,8 +163,8 @@ class Company {
       exit();
     }
   }
-  public void addWorker(String name, int speed, int capacity) {
-    Worker worker = new Worker(workers.getLastWorkerId(), name, speed, capacity);
+  public void addWorker(String name, int capacity) {
+    Worker worker = new Worker(workers.getLastWorkerId(), name, capacity);
     worker.profession=professions.get(0);
     workers.add(worker);
   }

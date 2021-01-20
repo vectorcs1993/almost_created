@@ -1,9 +1,9 @@
 PImage worker;
-
+int max_skill_level=10;
 
 class Worker extends WorkObject {
   float cost, payday;
-  int x, y, speed, capacity;
+  int x, y, capacity;
   PImage sprite;
   HashMap skills_values;
   ItemList items;
@@ -15,10 +15,9 @@ class Worker extends WorkObject {
 
   Timer update, upgrade;
 
-  Worker (int id, String name, int speed, int capacity) {
+  Worker (int id, String name, int capacity) {
     super(-1);
     this.id=id;
-    this.speed=speed;
     this.capacity=capacity;
     cost = 500;  
     payday = 50;
@@ -57,7 +56,6 @@ class Worker extends WorkObject {
       +"работа: "+getJobDescript()+"\n"
       +"должность: "+getProfessionDescript()+"\n"
       +"зарплата: "+payday+" $/день"+"\n"
-      +"скорость: "+speed+"\n"
       +"грузоподъемность: "+capacity+"\n"
       +getSkills()+"\n";
   }
@@ -86,7 +84,7 @@ class Worker extends WorkObject {
   String getSkills() {
     String string = "";
     for (int skill : getAllSkills()) 
-      string+=getSkillName(skill)+": "+skills_values.get(skill).hashCode()+"\n";
+      string+=getSkillName(skill)+": "+getWorkModificator(skill)+"\n";
     return string;
   }
   int [] getAllSkills() {
@@ -94,13 +92,17 @@ class Worker extends WorkObject {
   }
   void update() {
     if (!update.check() && !world.pause) {  //если пришло время обновления
+    int timer = 10;
       if (job!=null) {
+        timer = getWorkModificator(job.getType());
+        println(timer);
         if (job.isComplete()) 
           cancelJob();
         else 
         job.update();
+        
       }
-      update.set(map(speed, 0, 10, 800, 100));
+      update.set(map(timer, 0, max_skill_level, 600, 50));
     }
     draw();
     if (job!=null) {
@@ -186,8 +188,14 @@ class Worker extends WorkObject {
     }
   }
   void work(int work) {
-    int skill =  skills_values.get(work).hashCode()+1;
-    skills_values.put(work, skill);
+    if (max_skill_level>getWorkModificator(work)) {   //если уровень рабочего не превышает максимальный
+      int skill =  skills_values.get(work).hashCode()+1;
+      skills_values.put(work, skill);
+    }
+  }
+
+  int getWorkModificator(int work) {
+    return ceil(skills_values.get(work).hashCode()/100)+1;
   }
 
   private void setDirection(int x, int y) {
@@ -242,7 +250,6 @@ class Worker extends WorkObject {
     strokeWeight(2);
     stroke(white);
     if (path!=null) {
-
       if (!path.isEmpty()) {
         line(world.room.getAbsCoord(x, y)[0], world.room.getAbsCoord(x, y)[1], 
           world.room.getAbsCoord(path.get(path.size()-1).x, path.get(path.size()-1).y)[0], world.room.getAbsCoord(path.get(path.size()-1).x, path.get(path.size()-1).y)[1] );

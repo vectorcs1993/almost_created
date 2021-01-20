@@ -104,12 +104,6 @@ class Database {
         products.append(id);
     }
 
-    float getCostDevelop() {
-      if (reciept!=null) 
-        return (reciept.getScopeTotal()*10)/2; 
-      else 
-      return 0;
-    }
     int getStack() {
       return 100/weight;
     }

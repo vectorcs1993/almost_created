@@ -191,13 +191,14 @@ class Terminal extends WorkObject {
   int getMaxProgress() {
     return 100+100/count_operation;
   }
-  void work() {
+  void work() {  //функция выполняется из job, по этому проверка на job=isNull не нужна
     if (product!=null) {
       if (hp>0) {
         if (label==null) {
           if (this instanceof Workbench && progress==1)
-            ((Workbench)this).components.removeItems(product.reciept.getMult(count_operation));
-          progress++;
+            ((Workbench)this).components.removeItems(product.reciept.getMult(count_operation));  //списание компонентов для изготовления
+          int job_modificator = job.worker.getWorkModificator(data.objects.getId(id).type);
+          progress+=job_modificator;
           hp-=wear;
           if (progress>=getMaxProgress()) {
             float x=world.room.getCoordObject(this)[0];
@@ -325,8 +326,7 @@ class DevelopBench extends Terminal {
     return data.items.getId(product.id).reciept.getScopeTotal();
   }
   String getDescriptTask() {
-    return "сложность: "+data.items.getId(mainList.select.id).reciept.getScopeTotal()+"\n"+
-      "цена разработки: "+data.items.getId(mainList.select.id).getCostDevelop()+"$\n";
+    return "сложность: "+data.items.getId(mainList.select.id).reciept.getScopeTotal();
   }
   String getProductDescript() {
     if (label==null)

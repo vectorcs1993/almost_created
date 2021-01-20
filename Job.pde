@@ -29,6 +29,9 @@ class JobMove extends Job {   //работа по перемещению
     super.close();
     target=null;
   }
+  int getType() {
+    return CARRY;
+  }
 }
 class JobInTerminal extends Job {
   Terminal terminal;
@@ -53,7 +56,7 @@ class JobInTerminal extends Job {
       return data.label.get("job_develops")+" "+terminal.product.name;
     else if (work== CREATE)
       return data.label.get("job_created")+" "+terminal.product.name;
-       else if (work== ASSEMBLY)
+    else if (work== ASSEMBLY)
       return data.label.get("job_assemble")+" "+terminal.product.name;
     else 
     return null;
@@ -73,6 +76,12 @@ class JobInTerminal extends Job {
     moveToTerminal=null;
     terminal.job=null;
     terminal= null;
+  }
+  int getType() {
+    if (!moveToTerminal.isComplete())
+      return CARRY;
+    else
+      return work;
   }
 }
 class JobPutInContainerItem extends JobProgress {
@@ -105,6 +114,9 @@ class JobPutInContainerItem extends JobProgress {
     item= null;
     container=null;
   }
+  int getType() {
+    return CARRY;
+  }
 }
 class JobPutInBenchItem extends JobProgress {
   Item item;
@@ -125,6 +137,9 @@ class JobPutInBenchItem extends JobProgress {
     super.close();
     item= null;
     bench=null;
+  }
+  int getType() {
+    return CARRY;
   }
 }
 class JobPutInWorkerItemMap extends JobProgress {
@@ -151,6 +166,9 @@ class JobPutInWorkerItemMap extends JobProgress {
     super.close();
     itemMap= null;
   }
+  int getType() {
+    return CARRY;
+  }
 }
 class JobPutInWorkerItem extends JobProgress {
   int item, count;
@@ -171,6 +189,9 @@ class JobPutInWorkerItem extends JobProgress {
   void close() {
     super.close();
     container= null;
+  }
+  int getType() {
+    return CARRY;
   }
 }
 class JobCarry extends Job {
@@ -253,6 +274,9 @@ class JobCarry extends Job {
     inWorker=null;
     inObject.close();
     inObject=null;
+  }
+  int getType() {
+    return CARRY;
   }
 }
 class JobCarryItemMap extends JobCarry {
@@ -373,5 +397,11 @@ class JobRepair extends Job {
     super.close();
     terminal.job=null;
     terminal=null;
+  }
+  int getType() {
+    if (!moveToObject.isComplete())
+      return CARRY;
+    else
+      return REPAIR;
   }
 }
