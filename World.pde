@@ -49,12 +49,12 @@ class World extends ScaleActiveObject {
       allOrders.addAll(company.closed);
       allOrders.addAll(company.failed);
       if (orders.isEmpty() || orders.size()<company.ordersLimited) {
-        Item item = new Item(data.items.getRandom(Item.PRODUCTS).id); //определяет изделие
-        int scope_one =item.scope_of_operation+item.reciept.getScopeTotal();
+        int item = data.items.getRandom(Database.PRODUCTS).id; //определяет изделие
+        int scope_one =data.getItem(item).scope_of_operation+data.getItem(item).reciept.getScopeTotal();
         int count = 1+int(random(1000*world.company.getLevel())/scope_one); //определяет количество  
         int scope_total = count*scope_one;
         int deadLine = 2+int(date.getDays(scope_total));//определяет срок на изготовление 2 дня - минималка
-        float cost_one = item.cost*item.reciept.getCostTotal();  //определяет стоимость предмета 
+        float cost_one = data.getItem(item).cost*data.getItem(item).reciept.getCostTotal();  //определяет стоимость предмета 
         float cost = count*cost_one;  //определяет общую стоимость объектов 
         float exp=scope_one/world.company.getLevel();  
         if (cost<=1000*world.company.getLevel())
@@ -84,7 +84,7 @@ class World extends ScaleActiveObject {
       room.draw();
       if (menuMain.select.event.equals("showBuildings"))
         room.drawGrid();
-      if (!buildings.isActive() || buildings.select==null) 
+      if (!mainList.isActive() || mainList.select==null) 
         newObj=null;
       if (newObj!=null && hover) {
         pushStyle();
@@ -105,7 +105,7 @@ class World extends ScaleActiveObject {
   public String getObjectInfo() {
     if (room.isHoverLabel()) {
       WorkLabel label = room.getHoverLabel();
-      return label.item.name+" ("+label.count+")";
+      return data.getItem(label.item).name+" ("+label.count+")";
     } else {
       WorkObject object = getObject();
       if (object!=null)
@@ -152,8 +152,8 @@ class World extends ScaleActiveObject {
           if (menuMain.select.event.equals("showObjects")) 
             selectCurrentObject();
           else if (menuMain.select.event.equals("showBuildings")) {
-            if (buildings.select!=null) {
-              Database.DataObject newObj = data.objects.getId(buildings.select.id);
+            if (mainList.select!=null) {
+              Database.DataObject newObj = data.objects.getId(mainList.select.id);
               if (newObj.cost<=company.money) {
                 if (room.isPlaceBuilding(newObj, _x, _y)) {
                   if (room.getAllObjects().getNoItemMap().size()<company.buildingLimited) {
@@ -201,12 +201,9 @@ class World extends ScaleActiveObject {
       object[5][4] = new DevelopBench(WorkObject.DEVELOPBENCH);
       object[6][4] = new Container(0);
     }
-
-
     float [] getAbsCoord(int x, int y) {
       return new float [] {x*size_grid+size_grid/2, y*size_grid+size_grid/2};
     } 
-
     float [] getCoordObject(WorkObject object) {
       int [] res = getAbsCoordObject(object);
       if (res!=null)
@@ -214,7 +211,6 @@ class World extends ScaleActiveObject {
       else
         return null;
     }  
-
     int [] getAbsCoordObject(WorkObject object) {
       for (int ix=0; ix<sizeX; ix++) {
         for (int iy=0; iy<sizeY; iy++) {
@@ -238,7 +234,7 @@ class World extends ScaleActiveObject {
       }
       return null;
     }
-    public Terminal getObjectAtLabel(WorkLabel label) {
+    Terminal getObjectAtLabel(WorkLabel label) {
       for (WorkObject part : getAllObjects().getWorkObjects()) {
         Terminal terminal = (Terminal)part; 
         if (terminal .label==label)
@@ -246,7 +242,7 @@ class World extends ScaleActiveObject {
       }
       return null;
     }
-    public void update() {
+    void update() {
       for (int ix=0; ix<sizeX; ix++) {
         for (int iy=0; iy<sizeY; iy++) {
           WorkObject current = this.object[ix][iy];
@@ -259,7 +255,7 @@ class World extends ScaleActiveObject {
         }
       }
     }
-    public void removeObject(WorkObject object) {
+    void removeObject(WorkObject object) {
       for (int ix=0; ix<sizeX; ix++) {
         for (int iy=0; iy<sizeY; iy++) {
           if (this.object[ix][iy]==object) {
@@ -272,13 +268,13 @@ class World extends ScaleActiveObject {
         }
       }
     }
-    public void setActiveLabels(boolean active) {
+    void setActiveLabels(boolean active) {
       for (WorkLabel part : getAllLabels()) 
         part.setActive(active);
     }
-    public int addItem(int cx, int cy, int id, int count) {
+    int addItem(int cx, int cy, int id, int count) {
       int [] neighbors = new int [] {59, 49, 61, 71, 48, 50, 72, 70};
-      int stack = data.items.getId(id).getStack();
+      int stack = data.getItem(id).getStack();
       for (int i=0; i<neighbors.length; i++) {  //цикл перебирает все соседник клетки в соответствией с матрицей размещения
         int ix=cx+matrixShearch[neighbors[i]][0]; //корректировка координаты х
         int iy=cy+matrixShearch[neighbors[i]][1]; //корректировка координаты у
@@ -310,19 +306,13 @@ class World extends ScaleActiveObject {
       }
       return count;
     }
-    public ItemList getItemsIsContainers(int filter) {
-      ItemList list = new ItemList ();
+    ComponentList getItemsIsContainers(int filter) {
+      ComponentList list = new ComponentList (data.items);
       for (WorkObject object : getAllObjects().getObjectsEntryItems()) {
         if (object instanceof Container) {
-          if (!((Container)object).items.isEmpty())
+          if (((Container)object).items.size()>0)
             list.addAll(((Container)object).items);
-        } 
-        /*
-        else if (object instanceof ItemMap) {
-         for (int i=0; i<((ItemMap)object).count; i++)
-         list.add(new Item(((ItemMap)object).item));
-         }
-         */
+        }
       }
       return list;
     }
@@ -330,13 +320,25 @@ class World extends ScaleActiveObject {
       ComponentList list = new ComponentList (data.items);
       for (WorkObject object : getAllObjects().getObjectsEntryItems()) {
         if (object instanceof Container) {
-          if (!((Container)object).items.isEmpty())
-            list.addAll(((Container)object).items.getComponentList());
+          if (((Container)object).items.size()>0)
+            list.addAll(((Container)object).items);
         } else if (object instanceof ItemMap) 
-          list.setComponent(((ItemMap)object).item, ((ItemMap)object).count);
+          list.setComponents(((ItemMap)object).item, ((ItemMap)object).count);
       }
       return list;
     }
+
+    ComponentList getItemsIsDeveloped() { //возвращает список предметов уже разработанных (уникальный)
+      ComponentList list = new ComponentList(data.items);
+      for (WorkObject object : getAllObjects().getWorkBenches()) {
+        for (int p : ((Workbench)object).products) {
+          if (!list.hasValue(p))
+            list.append(p);
+        }
+      }
+      return list;
+    }
+
     int getShearchInItemMap(IntList items) { 
       for (int part : items) { 
         if (getAllObjects().getItems().getItemById(part)!=null) 
@@ -346,7 +348,7 @@ class World extends ScaleActiveObject {
     }
     int getShearchInItem(IntList items) {
       for (int part : items) { 
-        if (world.room.getItemsIsContainers(Item.ALL).getItem(part)!=null) 
+        if (world.room.getItemsIsContainers(Database.ALL).getComponent(part)!=-1) 
           return part;
       }
       return -1;
@@ -367,9 +369,9 @@ class World extends ScaleActiveObject {
     public void removeItem(int id) {
       for (WorkObject object : getAllObjects().getContainers()) {
         Container container = (Container)object;
-        if (!container.items.isEmpty()) {
-          if (container.items.getItem(id)!=null) 
-            container.items.removeItemCount(container.items.getItem(id), 1);
+        if (container.items.size()>0) {
+          if (container.items.getComponent(id)!=-1) 
+            container.items.removeItems(container.items.getComponent(id), 1);
         }
       }
     }

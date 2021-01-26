@@ -1,142 +1,3 @@
-
-
-
-class Item {
-  private final String name;
-  protected final int id;
-  protected int scope_of_operation, count_operation;
-  protected final int weight;
-  protected float cost;
-  static final int ALL=0, PRODUCTS=1;
-  protected ComponentList reciept;
-
-  Item (int id) {
-    this.id=id;
-    name =data.getItemName(id);
-    weight=data.items.getId(id).weight;
-    reciept=data.items.getId(id).reciept;
-    cost=data.items.getId(id).cost;
-    count_operation=data.items.getId(id).count_operation;
-    scope_of_operation=data.items.getId(id).scope_of_operation;
-  }
-}
-
-class ItemList extends ArrayList <Item> {
-
-  public IntList sortItem() { //сортирует и возвращает множество отсортированное
-    IntList itemsList= new IntList(); 
-    for (Item part : this) {
-      if (!itemsList.hasValue(part.id)) 
-        itemsList.append(part.id);
-    }
-    return itemsList;
-  }
-
-  public int getWeight() {
-    int itemsWeight = 0; 
-    for (Item part : this) 
-      itemsWeight+=part.weight;
-    return itemsWeight;
-  }
-
-  public int calculationItem(int id) {   //пересчет количества одинаковых предметов в списке
-    int total=0;
-    for (Item part : this) {
-      if (part.id==id) 
-        total++;
-    }
-    return total;
-  }
-
-  public Item getItem(int id) {      //возвращает экземпляр объекта по id
-    for (Item part : this) {
-      if (part.id==id) 
-        return part;
-    }
-    return null;
-  }
-
-  public String getNames() {
-    if (this.isEmpty())
-      return "пусто";
-    else {
-      String names="";
-      IntList inv = this.sortItem();
-      for (int k=0; k<inv.size(); k++) {
-        int i=inv.get(k);
-        names+=this.getItem(i).name+" ("+this.calculationItem(i)+")";
-        if (k!=inv.size()-1)
-          names+=", ";
-        else
-          names+=";";
-      }
-      return names;
-    }
-  }
-  public void addItemCount (Item item, int count) {
-    if (item!=null) {
-      for (int i=0; i<count; i++)
-        this.add(item);
-    }
-  }
-  public void removeItemCount (Item item, int count) {
-    if (item!=null) {
-      for (int i=0; i<count; i++)
-        if (this.contains(item))
-          this.remove(item);
-    }
-  }
-  public void removeItemCount (int id, int count) {
-    for (int i=0; i<count; i++) {
-      Item item = this.getItem(id);
-      if (item!=null)
-        this.remove(item);
-    }
-  }
-  ComponentList getNeedItems(ComponentList items, int count) {
-    ComponentList needs = new ComponentList(data.items);
-    for (int part : items.sortItem()) {  //сортировка по id
-      int countNeed = items.calculationItem(part)*count;
-      int countCurrent = this.calculationItem(part);
-      if (countCurrent<countNeed)  //проверка на соответствие количества
-        needs.setComponent(part, countNeed-countCurrent);
-    }  
-    return needs;
-  }
-  ComponentList getComponentList() {
-    ComponentList items = new ComponentList(data.items);
-    for (Item part : this)  
-      items.append(part.id);
-     
-    return items;
-  }
-  boolean isItems(ComponentList items, int count) {
-    for (int part : items.sortItem()) {  //сортировка по id
-      if (this.calculationItem(part)<items.calculationItem(part)*count)  //проверка на соответствие количества
-        return false;  //количество не соответствует
-    }  
-    return true;
-  }
-  boolean isItems(ComponentList items) {
-    for (int part : items.sortItem()) { 
-      if (this.calculationItem(part)<items.calculationItem(part)) {
-        return false;
-      }
-    }  
-    return true;
-  }
-  void removeItems(ComponentList items) {
-    if (!isItems(items))
-      return;
-    else { 
-      for (int part : items) {
-        if (this.getItem(part)!=null)
-          this.remove(this.getItem(part));
-      }
-    }
-  }
-}
-
 class ComponentList extends IntList {
   Database.DatabaseObjectList data;
 
@@ -144,18 +5,23 @@ class ComponentList extends IntList {
     super();
     this.data=data;
   }
-
-  void setComponent(int id, int count) {
+  void setComponents(int id, int count) {
     for (int i=0; i<count; i++)
       this.append(id);
   }
-  public ComponentList copy(ComponentList items) {
+  int getComponent(int value) {
+    if (this.hasValue(value))
+      return value;
+    else
+      return -1;
+  }
+  ComponentList copy(ComponentList items) {
     this.clear();
     for (int part : items)
       this.append(part);
     return this;
   }
-  public String getNames(int count) {  //сортирует по наименованию и возвращает список имен
+  String getNames(int count) {  //сортирует по наименованию и возвращает список имен
     if (this.size()==0)
       return "пусто";
     else {
@@ -172,7 +38,6 @@ class ComponentList extends IntList {
       return names;
     }
   }
-
   public String getNames() {  //сортирует по наименованию и возвращает список имен
     if (this.size()==0)
       return "пусто";
@@ -190,7 +55,7 @@ class ComponentList extends IntList {
       return names;
     }
   }
-  public IntList sortItem() { //сортирует и возвращает множество отсортированное
+  IntList sortItem() { //сортирует и возвращает множество отсортированное
     IntList itemsList= new IntList(); 
     for (int part : this) {
       if (!itemsList.hasValue(part)) 
@@ -198,7 +63,7 @@ class ComponentList extends IntList {
     }
     return itemsList;
   }
-  public int calculationItem(int id) {   //пересчет количества одинаковых предметов в списке
+  int calculationItem(int id) {   //пересчет количества одинаковых предметов в списке
     int total=0;
     for (int part : this) {
       if (part==id) 
@@ -212,15 +77,14 @@ class ComponentList extends IntList {
       int countNeed = items.calculationItem(part)*count;
       int countCurrent = this.calculationItem(part);
       if (countCurrent<countNeed) //проверка на соответствие количества
-        needs.setComponent(part, countNeed-countCurrent);
+        needs.setComponents(part, countNeed-countCurrent);
     }  
     return needs;
   }
-
   ComponentList getMult(int count) { //возвращает увеличенную копию
     ComponentList needs = new ComponentList(data);
     for (int part : this) {
-      needs.setComponent(part, count);
+      needs.setComponents(part, count);
     }  
     return needs;
   }
@@ -232,7 +96,6 @@ class ComponentList extends IntList {
     }
     return cost;
   }
-
   ComponentList getResources() { //возвращает список ресурсов для изготовления изделия
     ComponentList resources = new ComponentList(data);
     ArrayList <IntList> reciepts = new ArrayList <IntList>();
@@ -251,8 +114,6 @@ class ComponentList extends IntList {
     }
     return (ComponentList)resources;
   }
-
-
   int getScopeTotal() { //возвращает полную трудоемкость изготовения
     int scope = 0;
     ArrayList <IntList> reciepts = new ArrayList <IntList>();
@@ -271,7 +132,6 @@ class ComponentList extends IntList {
     }
     return scope;
   }
-
   boolean isComponents(ComponentList items) {
     for (int part : items.sortItem()) {  //сортировка по id
       if (this.calculationItem(part)<items.calculationItem(part)) { //проверка на соответствие количества
@@ -281,13 +141,13 @@ class ComponentList extends IntList {
     return true;
   }
   void removeItems(ComponentList items) {
-    if (!isComponents(items))
-      return;
-    else { 
-      for (int part : items) {
-        if (this.hasValue(part))
-          this.removeValue(part);
-      }
+    for (int part : items) 
+      this.removeValue(part);
+  }
+  void removeItems(int value, int count) {
+    for (int i = 0; i<count; i++) {
+      if (this.hasValue(value))
+        this.removeValue(value);
     }
   }
   void addNewProducts(ComponentList items) {
@@ -297,8 +157,21 @@ class ComponentList extends IntList {
         this.append(part);
     }
   }
-   void addAll(ComponentList items) {
+  void addAll(ComponentList items) {
     for (int part : items) 
-        this.append(part);
+      this.append(part);
   }
+  ComponentList getListNotWork() { //возвращает список (чертежей) не находящихся в работе
+    ComponentList projects = new ComponentList(data);
+    projects.copy(this);
+    for (WorkObject object : world.room.getAllObjects().getDevelopBenches()) {
+      DevelopBench develop = (DevelopBench)object;
+      if (develop.product!=-1) {
+        if (this.hasValue(develop.product))
+          projects.removeValue(develop.product);
+      }
+    }
+    return projects;
+  }
+
 }

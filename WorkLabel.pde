@@ -1,9 +1,9 @@
 class WorkLabel extends ScaleActiveObject {
-  Item item;
+  int item;
   int count;
   color colorBack;
   boolean newProduct;
-  WorkLabel(float x, float y, float ww, float hh, Item item, int count, boolean newProduct, color colorBack) {
+  WorkLabel(float x, float y, float ww, float hh, int item, int count, boolean newProduct, color colorBack) {
     super(x, y, ww, hh);
     this.item=item;
     this.count=count;
@@ -18,7 +18,7 @@ class WorkLabel extends ScaleActiveObject {
     fill(colorBack);
     stroke(white);
     rect(0, 0, width, height);
-    image(data.items.getId(item.id).sprite, 0, 0);
+    image(data.getItem(item).sprite, 0, 0);
     if (count>1 && !newProduct)
       drawCount(count);
     popStyle();
@@ -43,19 +43,19 @@ class WorkLabel extends ScaleActiveObject {
   }
   public void mousePressed() {
     if (newProduct) {
-      data.objects.getId(data.items.getId(item.id).work_object).products.append(item.id);
+      data.objects.getId(data.getItem(item).work_object).products.append(item);
       ComponentList components =  data.objects.getId(WorkObject.DEVELOPBENCH).products;
-      components.removeValue(item.id);
-      components.addNewProducts(data.items.getId(item.id).reciept);
+      components.removeValue(item);
+      components.addNewProducts(data.getItem(item).reciept);
       Terminal terminal = world.room.getObjectAtLabel(this);
-      terminal.products.removeValue(item.id);
-      terminal.products.addNewProducts(data.items.getId(item.id).reciept);
+      terminal.products.removeValue(item);
+      terminal.products.addNewProducts(data.getItem(item).reciept);
       terminal.removeLabel();
 
     } else {
       Terminal terminal = world.room.getObjectAtLabel(this);
       int [] place = world.room.getAbsCoordObject(terminal);
-      count = world.room.addItem(place[0], place[1], item.id, count);
+      count = world.room.addItem(place[0], place[1], item, count);
       if (count<=0)
         terminal.removeLabel();
     }

@@ -38,8 +38,10 @@ class Company {
       "работников: "+workers.size() +"\n";
   }
   public void update() {
+    
+    
     for (Worker worker : workers) {
-      if (worker.job==null) { 
+      if (worker.job==null) {
         if (worker.profession!=null) {
           if (worker.profession.jobs.hasValue(Job.SUPPLY)) { 
             //работа по выполнению закупки сырья
@@ -78,14 +80,13 @@ class Company {
                 continue;
               }
             }
-          }
-          
+          }  
                 if (worker.profession.jobs.hasValue(Job.CARRY)) { 
             //работа по переноске предметов в объект производства
             WorkObjectList objectsBenches = world.room.getAllObjects().getWorkBenches().getObjectsAllowJob().getObjectsAllowMove(worker);
             for (WorkObject object : objectsBenches) {
               Workbench workbench = (Workbench)object;
-              if (workbench.product!=null) {
+              if (workbench.product!=-1) {
                 //предметов на карте в объект производства
                 int needId=world.room.getShearchInItemMap(workbench.getNeedItems());
                 if (needId!=-1) {
@@ -102,7 +103,7 @@ class Company {
                 if (worker.job!=null)
                   break;
                 //предметов из контейнеров в объект производства
-                Item itemCarry=null;
+                int itemCarry=-1;
                 WorkObject containerIsItemFree=null; 
                 needId = world.room.getShearchInItem(workbench.getNeedItems());
                 if (needId!=-1) {
@@ -110,10 +111,10 @@ class Company {
                   WorkObjectList storageIsItem = world.room.getAllObjects().getIsItem(needId); 
                   if (!storageIsItem.isEmpty()) { 
                     containerIsItemFree=(Container)storageIsItem.getNearestObject(worker.x, worker.y);
-                    itemCarry=((Container)containerIsItemFree).items.getItem(needId);
+                    itemCarry=((Container)containerIsItemFree).items.getComponent(needId);
                   }
-                  if (containerIsItemFree!=null && itemCarry!=null) {  
-                    worker.job = new JobCarryItemForBench(worker, itemCarry.id, needItemCount, (Container)containerIsItemFree, workbench);                
+                  if (containerIsItemFree!=null && itemCarry!=-1) {  
+                    worker.job = new JobCarryItemForBench(worker, itemCarry, needItemCount, (Container)containerIsItemFree, workbench);                
                     continue;
                   }
                 }
@@ -137,8 +138,6 @@ class Company {
               }
             }
           }
-          
-          
           if (worker.profession.jobs.hasValue(Job.REPAIR)) {
             WorkObject terminalRepair = world.room.getAllObjects().getWorkObjects().getObjectsAllowJob().gerObjectAllowRepair().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
             if (terminalRepair!=null) {
@@ -147,9 +146,8 @@ class Company {
               continue;
             }
           }
-          int x=  int(random(world.room.sizeX));
+          int x = int(random(world.room.sizeX));
           int y = int(random(world.room.sizeY));
-
           if (getPathTo(world.room.node[worker.x][worker.y], world.room.node[x][y])!=null) 
             worker.job= new JobMove (worker, world.room.node[x][y]);
         }

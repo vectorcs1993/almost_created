@@ -2,7 +2,7 @@ abstract class Job {   //главный класс работы
   String name;
   Worker worker;
   boolean exit;
-  final static int CARRY=0, DEVELOP=1, REPAIR=2, CREATE=5, ASSEMBLY=6, SUPPLY=7;
+  final static int CARRY=0, DEVELOP=1, REPAIR=2, CREATE=5, ASSEMBLY=6, SUPPLY=7, MOVE=3;
   
   Job(Worker worker) {
     this.worker=worker;

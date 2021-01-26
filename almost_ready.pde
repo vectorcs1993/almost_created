@@ -40,7 +40,7 @@ void setup() {
   surface.setResizable(true);
   surface.setTitle(data.label.get("title"));
   floor = loadImage("data/sprites/floor.png");
-  worker= loadImage("data/sprites/worker/worker.png");
+  spr_worker= loadImage("data/sprites/worker/worker.png");
    lock= loadImage("data/sprites/hud/hud_lock.png");
   no_data = loadImage("data/sprites/no_data.png");
 

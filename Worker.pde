@@ -1,4 +1,4 @@
-PImage worker;
+PImage spr_worker;
 int max_skill_level=10;
 
 class Worker extends WorkObject {
@@ -6,7 +6,7 @@ class Worker extends WorkObject {
   int x, y, capacity;
   PImage sprite;
   HashMap skills_values;
-  ItemList items;
+  ComponentList items;
   Profession profession;
 
   //служебные для поиска пути
@@ -22,12 +22,12 @@ class Worker extends WorkObject {
     cost = 500;  
     payday = 50;
     x=y=direction=0;
-    sprite = worker;
+    sprite = spr_worker;
     path = new GraphList ();
     target = nextNode = null;
     update = new Timer();
     upgrade = new Timer();
-    items = new ItemList();
+    items = new ComponentList(data.items);
     this.name = name;
     profession = null;
     skills_values = createSkillsValues();
@@ -38,8 +38,8 @@ class Worker extends WorkObject {
     translate(x*world.size_grid+(world.size_grid/2), y*world.size_grid+(world.size_grid/2));
     rotate(getDirectionRad());
     image(sprite, -world.size_grid/2, -world.size_grid/2);
-    if (!items.isEmpty())
-      image(data.items.getId(items.get(0).id).sprite, -world.size_grid/2, -world.size_grid/2-13);
+    if (items.size()>0)
+      image(data.getItem(items.get(0)).sprite, -world.size_grid/2, -world.size_grid/2-13);
     popStyle();
     popMatrix();
   }
@@ -92,15 +92,13 @@ class Worker extends WorkObject {
   }
   void update() {
     if (!update.check() && !world.pause) {  //если пришло время обновления
-    int timer = 10;
+      int timer = 10;
       if (job!=null) {
-        timer = getWorkModificator(job.getType());
-        println(timer);
+        timer = getWorkModificator(job.getType()); 
         if (job.isComplete()) 
           cancelJob();
         else 
         job.update();
-        
       }
       update.set(map(timer, 0, max_skill_level, 600, 50));
     }
@@ -193,11 +191,12 @@ class Worker extends WorkObject {
       skills_values.put(work, skill);
     }
   }
-
   int getWorkModificator(int work) {
-    return ceil(skills_values.get(work).hashCode()/100)+1;
-  }
-
+    //if (work==Job.MOVE)  //если рабочий просто бродит то его скорость равна максимальной скорости при транспортировке
+      //work=Job.CARRY;
+    //return ceil(skills_values.get(work).hashCode()/100)+1;
+return 8;  
+}
   private void setDirection(int x, int y) {
     if (x<this.x && y==this.y)
       direction=3;

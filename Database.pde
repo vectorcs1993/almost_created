@@ -7,7 +7,7 @@ class Database {
   public final  DatabaseObjectList items = new  DatabaseObjectList(), objects = new  DatabaseObjectList();
   StringDict label = new StringDict(), helpMessages = new StringDict(); 
   SQLite db;
-
+  static final int ALL=0, PRODUCTS=1;
   Database () {
     JSONArray strings= loadJSONArray("data/languages/ru.json");      //чтение из файла
     for (int i = 0; i < strings.size(); i++) {
@@ -25,14 +25,27 @@ class Database {
         helpMessages.set(keyIndex, part.getString(keyIndex));
       }
     }
-
     db = new SQLite(context, "data/objects.db" );  //открывает файл базы данных
     db.setDebug(false);
     loadDatabase(items, "items");
     loadDatabase(objects, "objects");
   }
-  public DatabaseObjectList getItems() {
+  DatabaseObjectList getItems() {
     return items;
+  }
+  DataObject getItem(int id) {
+    return items.getId(id);
+  }
+  ComponentList getListisComponent(int product) { //возвращает список предметов в рецептах которых содержится данный предмет
+    ComponentList projects = new ComponentList(items);
+    for (Database.DataObject object : items) {
+      if (object.reciept!=null) {
+        if (object.reciept.hasValue(product)) {
+          projects.append(object.id);
+        }
+      }
+    }
+    return projects;
   }
   class DatabaseObjectList extends ArrayList <DataObject> {
     public DataObject getId(int id) {
@@ -42,7 +55,7 @@ class Database {
       }
       return null;
     }
-    public DatabaseObjectList getProducts() {
+    DatabaseObjectList getProducts() {
       DatabaseObjectList list = new DatabaseObjectList();
       for (DataObject object : this) {
         if (object.reciept!=null) 
@@ -50,17 +63,16 @@ class Database {
       }
       return list;
     }
-    public DataObject getRandom(int filter) {
+    DataObject getRandom(int filter) {
       DatabaseObjectList list = new DatabaseObjectList();
-      if (filter==Item.PRODUCTS) 
+      if (filter==PRODUCTS) 
         list = this.getProducts();
       else 
       list = this;
       int random = constrain(int(random(list.size())), 0, list.size()-1);
       return list.get(random);
     }
-
-    public void putPool() {
+    void putPool() {
       for (DataObject object : this) {
         if (object.reciept==null) {
           object.pool+=int(object.maxPool/20);
@@ -74,7 +86,6 @@ class Database {
     protected final int id;
     protected final PImage sprite;
     protected final String name;
-    protected String description;
     protected ComponentList reciept, products;
     int scope_of_operation, count_operation, weight, pool, maxPool, work_object, type;
     protected float cost;
@@ -82,7 +93,6 @@ class Database {
       this.id=id;
       this.name=name;
       this.sprite=sprite;
-      description="";
       count_operation=weight=1;
       scope_of_operation=10;
       cost=type=0;
@@ -135,9 +145,6 @@ class Database {
     }
     return null;
   }
-  public String getItemName(int id) {
-    return items.getId(id).name;
-  }
   private void loadDatabase(ArrayList list, String table) {
     if (db.connect()) {
       db.query("SELECT * FROM "+table);
@@ -166,14 +173,14 @@ class Database {
           object.weight=db.getInt("weight"); 
           if (db.getInt("work_object")!=0) 
             object.work_object=db.getInt("work_object");
-          
+
           if (db.getString("reciept")!=null) {  //заполнение рецепта
             object.count_operation=db.getInt("count_operation"); //определяет количество предмета изготовленного за 1 операцию
             object.reciept = new ComponentList(items);
             JSONArray parse = parseJSONArray(db.getString("reciept"));
             for (int i = 0; i < parse.size(); i++) {
               JSONObject part = parse.getJSONObject(i);
-              object.reciept.setComponent(part.getInt("id"), part.getInt("count"));
+              object.reciept.setComponents(part.getInt("id"), part.getInt("count"));
             }
           } else {
             object.maxPool=db.getInt("max_pool"); //определяет максимальное количество ресурсов в пуле
@@ -182,8 +189,6 @@ class Database {
         }
 
         if (object!=null) {  //если объект базы данных создался
-
-          object.description=label.get(db.getString("description")); //загружает краткое описание объекта
           object.cost=db.getFloat("cost"); //определяет стоимость
           list.add(object);
         }

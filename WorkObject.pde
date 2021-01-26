@@ -1,5 +1,3 @@
-
-
 abstract class WorkObject {
   int id, progress;
   PImage sprite;
@@ -123,8 +121,8 @@ class ItemMap extends WorkObject {
     super(-1);
     this.item=item;
     this.count=count;
-    sprite=data.items.getId(item).sprite;
-    name=data.items.getId(item).name;
+    sprite=data.getItem(item).sprite;
+    name=data.getItem(item).name;
   }
   String getDescript() {
     return "предмет";
@@ -137,7 +135,7 @@ class ItemMap extends WorkObject {
 }
 class Terminal extends WorkObject {
   float hp, hp_max, wear, speed;
-  Item product;
+  int product;
   WorkLabel label;
   ComponentList products;
   int count_operation;
@@ -147,7 +145,7 @@ class Terminal extends WorkObject {
     super(id);
     label=null;
     progress=0;
-    product=null;
+    product=-1;
     products = new ComponentList(data.items);
     products = data.objects.getId(id).products;
     hp_max=100;
@@ -168,7 +166,7 @@ class Terminal extends WorkObject {
     return blue;
   }
   String getDescriptTask() {
-    Database.DataObject item = data.items.getId(mainList.select.id);
+    Database.DataObject item = data.getItem(mainList.select.id);
     if (item.pool>0) {
       return "количество: "+count_operation+"\n"
         +"цена: "+getDecimalFormat(count_operation*item.getCostForPool())+" $\n"
@@ -178,9 +176,9 @@ class Terminal extends WorkObject {
   }
   String getProductDescript() {
     if (label==null)
-      return "доставка товара: "+product.name+"\nпроцесс: "+progress+"/"+getMaxProgress()+"";
+      return "доставка товара: "+data.getItem(product).name+"\nпроцесс: "+progress+"/"+getMaxProgress()+"";
     else 
-    return product.name+" доставлен";
+    return data.getItem(product).name+" доставлен";
   }
   protected float getTick() {
     return speed;
@@ -192,19 +190,19 @@ class Terminal extends WorkObject {
     return 100+100/count_operation;
   }
   void work() {  //функция выполняется из job, по этому проверка на job=isNull не нужна
-    if (product!=null) {
+    if (product!=-1) {
       if (hp>0) {
         if (label==null) {
-          if (this instanceof Workbench && progress==1)
-            ((Workbench)this).components.removeItems(product.reciept.getMult(count_operation));  //списание компонентов для изготовления
+          if (this instanceof Workbench && ((Workbench)this).components.size()>0)
+            ((Workbench)this).components.removeItems(data.getItem(product).reciept.getMult(count_operation));  //списание компонентов для изготовления
           int job_modificator = job.worker.getWorkModificator(data.objects.getId(id).type);
-          progress+=job_modificator;
+          progress+=100;//job_modificator;
           hp-=wear;
           if (progress>=getMaxProgress()) {
             float x=world.room.getCoordObject(this)[0];
             float y=world.room.getCoordObject(this)[1];
             float size=world.room.getCoordObject(this)[2];
-            label=new WorkLabel(x-10, y-10, size, size, product, product.count_operation*count_operation, getNewProduct(), getColor());
+            label=new WorkLabel(x-10, y-10, size, size, product, data.getItem(product).count_operation*count_operation, getNewProduct(), getColor());
             if (!menuMain.select.event.equals("showObjects")) 
               label.setActive(false);
             progress=0;
@@ -222,15 +220,15 @@ class Terminal extends WorkObject {
     if (label!=null) {
       label.setActive(false);
       label=null;
-      product=null;
+      product=-1;
     } 
     progress=0;
     count_operation=0;
   }
   public void draw() {
     super.draw();
-    if (product!=null) {
-      drawBottomSprite(data.items.getId(product.id).sprite);
+    if (product!=-1) {
+      drawBottomSprite(data.getItem(product).sprite);
       if (progress>0)
         drawStatus(5, progress, getMaxProgress(), green, red);
     }
@@ -249,29 +247,29 @@ class Terminal extends WorkObject {
   }
 }
 class Workbench extends Terminal {
-  private ItemList components;
+  private ComponentList components;
   
   Workbench (int id) {
     super(id);
-    components = new ItemList();
+    components = new ComponentList(data.items);
   }
   color getColor() {
     return black;
   }
   int getMaxProgress() {
-    return product.scope_of_operation*count_operation;
+    return data.getItem(product).scope_of_operation*count_operation;
   }
   String getDescriptTask() {
-    Database.DataObject product = data.items.getId(mainList.select.id);
+    Database.DataObject product = data.getItem(mainList.select.id);
     return "операции: "+count_operation+"\n"
-      +"изделия: "+count_operation*data.items.getId(mainList.select.id).count_operation+" шт.\n"
+      +"изделия: "+count_operation*data.getItem(mainList.select.id).count_operation+" шт.\n"
       +"трудоёмкость: "+count_operation*(product.scope_of_operation+product.reciept.getScopeTotal())+"\n";
   }
   String getProductDescript() {
     if (label==null)
-      return "изделие: "+product.name;
+      return "изделие: "+data.getItem(product).name;
     else 
-    return product.name+" изготовлено";
+    return data.getItem(product).name+" изготовлено";
   }        
   String getDescriptProgress() {    
     return "процесс: "+progress+"/"+getMaxProgress();
@@ -282,18 +280,18 @@ class Workbench extends Terminal {
   }
   IntList getNeedItems() {
     IntList needItems = new IntList();
-    if (product!=null && label==null) {
-      for (int part : product.reciept.sortItem()) {
-        if (components.calculationItem(part)<product.reciept.calculationItem(part)*count_operation) 
+    if (product!=-1 && label==null) {
+      for (int part : data.getItem(product).reciept.sortItem()) {
+        if (components.calculationItem(part)<data.getItem(product).reciept.calculationItem(part)*count_operation) 
           needItems.append(part);
       }
     }
     return needItems;
   }
   boolean isAllowCreate() {
-    if (product!=null) {
-      for (int part : product.reciept.sortItem()) {
-        if (components.calculationItem(part)<product.reciept.calculationItem(part)*count_operation) 
+    if (product!=-1) {
+      for (int part : data.getItem(product).reciept.sortItem()) {
+        if (components.calculationItem(part)<data.getItem(product).reciept.calculationItem(part)*count_operation) 
           return false;
       }
     }
@@ -303,10 +301,11 @@ class Workbench extends Terminal {
     for (int part : components.sortItem()) 
       world.room.addItem(this.getX(), this.getY(), part, components.calculationItem(part));
     components.clear();
+   
   }
   int getNeedItemCount(int id) {
-    if (product!=null && label==null) {
-      return product.reciept.calculationItem(id)*count_operation-components.calculationItem(id);
+    if (product!=-1 && label==null) {
+      return data.getItem(product).reciept.calculationItem(id)*count_operation-components.calculationItem(id);
     } else
       return -1;
   }
@@ -323,26 +322,27 @@ class DevelopBench extends Terminal {
     return true;
   }
   int getMaxProgress() {
-    return data.items.getId(product.id).reciept.getScopeTotal();
+    return data.getItem(product).reciept.getScopeTotal();
   }
   String getDescriptTask() {
-    return "сложность: "+data.items.getId(mainList.select.id).reciept.getScopeTotal();
+    return "сложность: "+data.getItem(mainList.select.id).reciept.getScopeTotal()+"\n"+
+    "изготавливается: "+data.objects.getId(data.getItem(mainList.select.id).work_object).name;
   }
   String getProductDescript() {
     if (label==null)
-      return "чертеж на: "+product.name+"\nпроцесс: "+progress+"/"+getMaxProgress()+"\n";
+      return "чертеж на: "+data.getItem(product).name+"\nпроцесс: "+progress+"/"+getMaxProgress()+"\n";
     else 
-    return product.name+" разработан";
+    return data.getItem(product).name+" разработан";
   }
 }
 
 class Container extends WorkObject {
   int capacity;
-  ItemList items;
+  ComponentList items;
 
   Container (int id) {
     super(id);
-    items = new ItemList();
+    items = new ComponentList(data.items);
     capacity = 400;
   }
   public String getDescript() {
@@ -351,8 +351,8 @@ class Container extends WorkObject {
   }
   public int getCapacity() {
     int capacity = 0;
-    for (Item item : items) 
-      capacity+=item.weight;
+    for (int item : items) 
+      capacity+=data.getItem(item).weight;
     return capacity;
   }
   public boolean isFreeCapacity() {
@@ -469,7 +469,7 @@ class WorkObjectList extends ArrayList <WorkObject> {
     WorkObjectList objects = new WorkObjectList();
     for (WorkObject object : this) {
       if (object instanceof Terminal) {
-        if (((Terminal)object).product!=null && ((Terminal)object).label==null) 
+        if (((Terminal)object).product!=-1 && ((Terminal)object).label==null) 
           objects.add(object);
       }
     }
