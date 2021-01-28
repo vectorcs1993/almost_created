@@ -45,13 +45,8 @@ class WorkLabel extends ScaleActiveObject {
     if (newProduct) {
       data.objects.getId(data.getItem(item).work_object).products.append(item);
       ComponentList components =  data.objects.getId(WorkObject.DEVELOPBENCH).products;
-      components.removeValue(item);
-      components.addNewProducts(data.getItem(item).reciept);
       Terminal terminal = world.room.getObjectAtLabel(this);
-      terminal.products.removeValue(item);
-      terminal.products.addNewProducts(data.getItem(item).reciept);
       terminal.removeLabel();
-
     } else {
       Terminal terminal = world.room.getObjectAtLabel(this);
       int [] place = world.room.getAbsCoordObject(terminal);

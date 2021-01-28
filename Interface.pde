@@ -11,7 +11,7 @@ Textfield input;
 
 CheckList tasks;
 PImage info, task, maintenance, action, cargo, production, spr_buildings, spr_orders, 
-  spr_order_new, spr_order_in_work, spr_order_complete, spr_order_closed, spr_company, spr_workers, spr_professions,
+  spr_order_new, spr_order_in_work, spr_order_complete, spr_order_closed, spr_company, spr_workers, spr_professions, 
   spr_play, spr_pause;
 
 
@@ -506,6 +506,10 @@ void taskControl(Terminal terminal) {
 }
 void taskMainControl(Terminal terminal) {
   if (terminal.product==-1) {        //если продукт не назначен
+    if (terminal instanceof DevelopBench) {
+    terminal.products.clear();
+      terminal.products=world.room.getListAllowProducts();
+    }
     if (terminal.products!=null) {      //если список продуктов существует
       if (terminal.products.size()>0) { //если список продуктов не пустой
         //заголовок списка
@@ -515,9 +519,10 @@ void taskMainControl(Terminal terminal) {
           showScaleText("изделия:", 524, 90);  
         else
           showScaleText("ресурсы:", 524, 90);
-        if (terminal instanceof DevelopBench)
+        if (terminal instanceof DevelopBench) {
+
           mainList.loadComponents(terminal.products.getListNotWork()); //загружает откорректированный список чертежей
-        else
+        } else
           mainList.loadComponents(terminal.products); //загружает продукты в список
         mainList.setActive(true);  //отображает список
         if (mainList.select!=null) {  //если 
@@ -782,8 +787,8 @@ void updateInterface() {
     mainList.setActive(true);
     mainList.loadObjects(data.objects);
     if (mainList.select!=null) {
-       infoControl(listInfo, "цена: "+data.objects.getId(mainList.select.id).cost+" $");
-      
+      infoControl(listInfo, "цена: "+data.objects.getId(mainList.select.id).cost+" $");
+
       if (world.hover)
         world.newObj = data.objects.getId(mainList.select.id);
     }

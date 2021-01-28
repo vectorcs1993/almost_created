@@ -67,19 +67,15 @@ void draw() {
 }
 void keyPressed() {
 //world.pause=!world.pause;
- world.room.addItem(world.getAbsCoordX(), world.getAbsCoordY(), 1, 10);
+ world.room.addItem(world.getAbsCoordX(), world.getAbsCoordY(), 70, 10);
 }
 void clientEvent(Client client) {
   if (connect) {
-
     if (client.active()) {
       JSONObject message = parseJSONObject(client.readString());
       int idMessage = message.getInt("id_message");
       String time = hour()+":"+minute()+":"+second();
       String messageConsole="";
-
-
-
 
       if (idMessage==3)
         messageConsole = message.getString("name")+" : потеряно соединение";

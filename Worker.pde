@@ -192,9 +192,9 @@ class Worker extends WorkObject {
     }
   }
   int getWorkModificator(int work) {
-    //if (work==Job.MOVE)  //если рабочий просто бродит то его скорость равна максимальной скорости при транспортировке
-      //work=Job.CARRY;
-    //return ceil(skills_values.get(work).hashCode()/100)+1;
+   // if (work==Job.MOVE)  //если рабочий просто бродит то его скорость равна максимальной скорости при транспортировке
+  //    work=Job.CARRY;
+  //  return ceil(skills_values.get(work).hashCode()/100)+1;
 return 8;  
 }
   private void setDirection(int x, int y) {

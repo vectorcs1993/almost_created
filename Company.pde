@@ -38,8 +38,8 @@ class Company {
       "работников: "+workers.size() +"\n";
   }
   public void update() {
-    
-    
+
+
     for (Worker worker : workers) {
       if (worker.job==null) {
         if (worker.profession!=null) {
@@ -70,7 +70,7 @@ class Company {
               }
             }
           }
-           if (worker.profession.jobs.hasValue(Job.ASSEMBLY)) { 
+          if (worker.profession.jobs.hasValue(Job.ASSEMBLY)) { 
             //работа по сборке изделий
             WorkObject productBench = world.room.getAllObjects().getWorkBenches(Job.ASSEMBLY).getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
             if (productBench !=null) {
@@ -81,7 +81,7 @@ class Company {
               }
             }
           }  
-                if (worker.profession.jobs.hasValue(Job.CARRY)) { 
+          if (worker.profession.jobs.hasValue(Job.CARRY)) { 
             //работа по переноске предметов в объект производства
             WorkObjectList objectsBenches = world.room.getAllObjects().getWorkBenches().getObjectsAllowJob().getObjectsAllowMove(worker);
             for (WorkObject object : objectsBenches) {
@@ -95,9 +95,11 @@ class Company {
                   WorkObjectList itemsFree = world.room.getAllObjects().getItems().getObjectsAllowJob().getObjectsAllowMove(worker).getItemsById(needId);
                   if (!itemsFree.isEmpty()) 
                     objectCarryComponent=itemsFree.getNearestObject(worker.x, worker.y);
-                  if (objectCarryComponent!=null) {  
-                    worker.job = new JobCarryItemMapForBench(worker, (ItemMap)objectCarryComponent, needItemCount, workbench);                
-                    continue;
+                  if (objectCarryComponent!=null) {
+                    if (data.getItem(((ItemMap)objectCarryComponent).item).weight<=worker.capacity) {
+                      worker.job = new JobCarryItemMapForBench(worker, (ItemMap)objectCarryComponent, needItemCount, workbench);                
+                      continue;
+                    }
                   }
                 }
                 if (worker.job!=null)
@@ -114,8 +116,10 @@ class Company {
                     itemCarry=((Container)containerIsItemFree).items.getComponent(needId);
                   }
                   if (containerIsItemFree!=null && itemCarry!=-1) {  
-                    worker.job = new JobCarryItemForBench(worker, itemCarry, needItemCount, (Container)containerIsItemFree, workbench);                
-                    continue;
+                    if (data.getItem(itemCarry).weight<=worker.capacity) {
+                      worker.job = new JobCarryItemForBench(worker, itemCarry, needItemCount, (Container)containerIsItemFree, workbench);                
+                      continue;
+                    }
                   }
                 }
               }
@@ -132,8 +136,10 @@ class Company {
               if (!containers.isEmpty()) {
                 container = (Container)containers.getNearestObject(worker.x, worker.y);
                 if (container!= null) {
+                  if (data.getItem(itemMap.item).weight<=worker.capacity) {
                   worker.job = new JobCarryItemMap(worker, itemMap, container);
                   continue;
+                  }
                 }
               }
             }

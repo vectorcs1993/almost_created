@@ -47,7 +47,11 @@ class JobInTerminal extends Job {
     moveToTerminal = new JobMove(worker, targetTerminal);
   }
   boolean isComplete() {
-    return terminal.label!=null;
+    if (terminal.label==null)
+    return terminal.product==-1;
+    else 
+      return terminal.label!=null;
+    
   }
   String getStatus() {
     if (work==SUPPLY)

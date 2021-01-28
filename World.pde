@@ -49,7 +49,7 @@ class World extends ScaleActiveObject {
       allOrders.addAll(company.closed);
       allOrders.addAll(company.failed);
       if (orders.isEmpty() || orders.size()<company.ordersLimited) {
-        int item = data.items.getRandom(Database.PRODUCTS).id; //определяет изделие
+        int item = data.items.getRandom(Database.RESHEARCHED).id; //определяет изделие
         int scope_one =data.getItem(item).scope_of_operation+data.getItem(item).reciept.getScopeTotal();
         int count = 1+int(random(1000*world.company.getLevel())/scope_one); //определяет количество  
         int scope_total = count*scope_one;
@@ -327,13 +327,29 @@ class World extends ScaleActiveObject {
       }
       return list;
     }
-
     ComponentList getItemsIsDeveloped() { //возвращает список предметов уже разработанных (уникальный)
       ComponentList list = new ComponentList(data.items);
-      for (WorkObject object : getAllObjects().getWorkBenches()) {
-        for (int p : ((Workbench)object).products) {
+      for (Database.DataObject object : data.objects) {
+        for (int p : object.products) {
           if (!list.hasValue(p))
             list.append(p);
+        }
+      }
+      return list;
+    }
+    ComponentList getListAllowProducts() { //возвращает список доступных для разработки чертежей
+      ComponentList list = new ComponentList(data.items);
+      ComponentList all_product = getItemsIsDeveloped();  //список изделий уже разработанных
+      all_product.addAll(data.getResources());
+      for (Database.DataObject product : data.items.getProducts()) { //берет список всех изделий
+        if (!all_product.hasValue(product.id)) { //если чертеж еще не разработан
+          boolean add = true;
+          for (int p : product.reciept.sortItem()) {
+            if (!all_product.hasValue(p))
+              add=false;
+          }
+          if (add && !list.hasValue(product.id))
+            list.append(product.id);
         }
       }
       return list;

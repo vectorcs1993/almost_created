@@ -39,8 +39,7 @@ abstract class WorkObject {
     image(sprite, -world.size_grid/2, -world.size_grid/2);
     popMatrix();
     if (job!=null) 
-     drawBottomSprite(lock);
-    
+      drawBottomSprite(lock);
   }
   void drawSelected() {
     pushStyle();
@@ -52,11 +51,11 @@ abstract class WorkObject {
   }
   void drawBottomSprite(PImage sprite) {
     pushStyle();
-      tint(white, 190);
-      image(sprite, -world.size_grid/2, -world.size_grid/2);
-      popStyle(); 
+    tint(white, 190);
+    image(sprite, -world.size_grid/2, -world.size_grid/2);
+    popStyle();
   }
-  
+
   void drawCount(int count) {
     pushMatrix();
     translate(-world.size_grid/2, -world.size_grid/2);
@@ -199,13 +198,25 @@ class Terminal extends WorkObject {
           progress+=100;//job_modificator;
           hp-=wear;
           if (progress>=getMaxProgress()) {
-            float x=world.room.getCoordObject(this)[0];
-            float y=world.room.getCoordObject(this)[1];
-            float size=world.room.getCoordObject(this)[2];
-            label=new WorkLabel(x-10, y-10, size, size, product, data.getItem(product).count_operation*count_operation, getNewProduct(), getColor());
-            if (!menuMain.select.event.equals("showObjects")) 
-              label.setActive(false);
-            progress=0;
+
+            if (this instanceof DevelopBench) {
+              data.objects.getId(data.getItem(product).work_object).products.append(product);
+              removeLabel();
+            } else {
+              int [] place = world.room.getAbsCoordObject(this);
+              int count=world.room.addItem(place[0], place[1], product, data.getItem(product).count_operation*count_operation);
+              if (count<=0)
+                removeLabel();
+              else {
+                float x=world.room.getCoordObject(this)[0];
+                float y=world.room.getCoordObject(this)[1];
+                float size=world.room.getCoordObject(this)[2];
+                label=new WorkLabel(x-10, y-10, size, size, product, count, getNewProduct(), getColor());
+                if (!menuMain.select.event.equals("showObjects")) 
+                  label.setActive(false);
+              }
+            }
+            
           }
         }
       }
@@ -220,8 +231,8 @@ class Terminal extends WorkObject {
     if (label!=null) {
       label.setActive(false);
       label=null;
-      product=-1;
     } 
+    product=-1;
     progress=0;
     count_operation=0;
   }
@@ -248,7 +259,7 @@ class Terminal extends WorkObject {
 }
 class Workbench extends Terminal {
   private ComponentList components;
-  
+
   Workbench (int id) {
     super(id);
     components = new ComponentList(data.items);
@@ -301,7 +312,6 @@ class Workbench extends Terminal {
     for (int part : components.sortItem()) 
       world.room.addItem(this.getX(), this.getY(), part, components.calculationItem(part));
     components.clear();
-   
   }
   int getNeedItemCount(int id) {
     if (product!=-1 && label==null) {
@@ -326,7 +336,7 @@ class DevelopBench extends Terminal {
   }
   String getDescriptTask() {
     return "сложность: "+data.getItem(mainList.select.id).reciept.getScopeTotal()+"\n"+
-    "изготавливается: "+data.objects.getId(data.getItem(mainList.select.id).work_object).name;
+      "изготавливается: "+data.objects.getId(data.getItem(mainList.select.id).work_object).name;
   }
   String getProductDescript() {
     if (label==null)

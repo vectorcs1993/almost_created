@@ -7,7 +7,7 @@ class Database {
   public final  DatabaseObjectList items = new  DatabaseObjectList(), objects = new  DatabaseObjectList();
   StringDict label = new StringDict(), helpMessages = new StringDict(); 
   SQLite db;
-  static final int ALL=0, PRODUCTS=1;
+  static final int ALL=0, PRODUCTS=1, RESHEARCHED=2;
   Database () {
     JSONArray strings= loadJSONArray("data/languages/ru.json");      //чтение из файла
     for (int i = 0; i < strings.size(); i++) {
@@ -47,6 +47,14 @@ class Database {
     }
     return projects;
   }
+  ComponentList getResources() {//можно объединить с верхним
+    ComponentList list = new ComponentList(items);
+    for (DataObject object : items) {
+      if (object.reciept==null) 
+        list.append(object.id);
+    }
+    return list;
+  }
   class DatabaseObjectList extends ArrayList <DataObject> {
     public DataObject getId(int id) {
       for (DataObject part : this) {
@@ -55,10 +63,20 @@ class Database {
       }
       return null;
     }
-    DatabaseObjectList getProducts() {
+    DatabaseObjectList getProducts() { //можно объединить с нижним
       DatabaseObjectList list = new DatabaseObjectList();
       for (DataObject object : this) {
         if (object.reciept!=null) 
+          list.add(object);
+      }
+      return list;
+    }
+    DatabaseObjectList getIsDeveloped() { 
+      DatabaseObjectList list = new DatabaseObjectList();
+      ComponentList developed = world.room.getItemsIsDeveloped(); 
+      developed.addAll(world.room.getListAllowProducts());
+      for (DataObject object : getProducts()) {
+        if (developed.hasValue(object.id)) 
           list.add(object);
       }
       return list;
@@ -67,6 +85,8 @@ class Database {
       DatabaseObjectList list = new DatabaseObjectList();
       if (filter==PRODUCTS) 
         list = this.getProducts();
+      else if (filter == RESHEARCHED) 
+        list = getIsDeveloped();
       else 
       list = this;
       int random = constrain(int(random(list.size())), 0, list.size()-1);
@@ -118,11 +138,7 @@ class Database {
       return 100/weight;
     }
   }
-
-
-
-
-  public WorkObject getNewObject(Database.DataObject obj) {
+  WorkObject getNewObject(Database.DataObject obj) {
     switch(obj.id) {
     case WorkObject.CONTAINER: 
       return new Container(obj.id);
@@ -155,16 +171,12 @@ class Database {
             loadImage("data/sprites/"+db.getString("sprite")+".png"));
           object=obj;
           object.type=db.getInt("job");
-          if (db.getString("parameters")!=null) { //расшифровка параметров
-            JSONArray parse = parseJSONArray(db.getString("parameters"));
-            for (int i = 0; i < parse.size(); i++) {
-              JSONObject part = parse.getJSONObject(i);
-              if (part.hasKey("products")) {  //загрузка прочих индивидуальных параметров
-                JSONArray parserProducts = part.getJSONArray("products"); //загрузка изделий
-                for (int ip = 0; ip < parserProducts.size(); ip++) 
-                  object.addProduct(parserProducts.getInt(ip));
-              }
-            }
+          if (obj.id==14) {
+            obj.products.append(0);
+            obj.products.append(1);
+            obj.products.append(2);
+            obj.products.append(7);
+            obj.products.append(10);
           }
         } else if (table.equals("items")) {
           DataObject obj = new DataObject(db.getInt("id"), label.get(db.getString("name")), 
