@@ -1,18 +1,18 @@
 SimpleButton buttonCreate, buttonCreate1, buttonCreate10, buttonCreateBack1, buttonCreateBack10, buttonCreateManual, buttonCancelProduct, 
   buttonOpenOrder, buttonCloseOrder, buttonCancelOrder, buttonPause, buttonStart, buttonRemoveObject, buttonRotateObject, buttonRemoveItem, buttonRemoveAllItem, 
-  buttonRepair, buttonRecrutAdd, buttonRecrutRemove, buttonProfSet, buttonSend, buttonRenameObject, buttonRenameCompany, 
-  buttonProfRename, buttonProfAdd, buttonProfRemove;
-RadioButton menuMain, menuTasker, menuSimple, menuItemMap, menuBench, menuOrders, menuReciept, menuCompany;
+  buttonRecrutAdd, buttonRecrutRemove, buttonProfSet, buttonRenameObject, buttonRenameCompany, 
+  buttonProfRename, buttonProfAdd, buttonProfRemove, buttonForward, buttonBackward;
+RadioButton menuMain, menuTasker, menuContainer, menuBench, menuOrders, menuReciept, menuCompany, menuWorker;
 SimpleRadioButton buttonInfo, buttonManager, buttonMaintenance, buttonTask, buttonCargo; 
 Listbox mainList, secondList, helpList;
 ControlP5 interfaces;
 Textarea console, objectInfo, listInfo;
-Textfield input;
+
 
 CheckList tasks;
 PImage info, task, maintenance, action, cargo, production, spr_buildings, spr_orders, 
   spr_order_new, spr_order_in_work, spr_order_complete, spr_order_closed, spr_company, spr_workers, spr_professions, 
-  spr_play, spr_pause;
+  spr_play, spr_pause, spr_forward, spr_backward;
 
 
 void setupInterface() {
@@ -34,6 +34,8 @@ void setupInterface() {
   spr_professions = loadImage("data/sprites/hud/hud_professions.png");
   spr_play = loadImage("data/sprites/hud/hud_play.png");
   spr_pause = loadImage("data/sprites/hud/hud_pause.png");
+  spr_forward = loadImage("data/sprites/hud/hud_forward.png");
+  spr_backward = loadImage("data/sprites/hud/hud_backward.png");
   //специальный функционал для переключения скроллинг списка
   Runnable resetScroll = new Runnable() {
     public void run() {
@@ -60,12 +62,13 @@ void setupInterface() {
     new SimpleRadioButton("showMenuCompany", spr_company), 
     new SimpleRadioButton("showHelp", production), 
     new SimpleRadioButton("showMenu", production)});
-  menuSimple=new RadioButton (513, 32, 64, 32, RadioButton.HORIZONTAL);
-  menuSimple.addButtons(new SimpleRadioButton [] {buttonInfo.clone(), buttonCargo.clone()});
+  menuContainer=new RadioButton (513, 32, 96, 32, RadioButton.HORIZONTAL);
+  menuContainer.addButtons(new SimpleRadioButton [] {buttonInfo.clone(), buttonManager.clone(), buttonCargo.clone()});
+  menuWorker=new RadioButton (513, 32, 64, 32, RadioButton.HORIZONTAL);
+  menuWorker.addButtons(new SimpleRadioButton [] {buttonInfo.clone(), buttonCargo.clone()});
   menuTasker=new RadioButton (513, 32, 128, 32, RadioButton.HORIZONTAL);
   menuTasker.addButtons(new SimpleRadioButton [] {buttonTask.clone(), buttonInfo.clone(), buttonManager.clone(), buttonMaintenance.clone()});
-  menuItemMap=new RadioButton (513, 32, 64, 32, RadioButton.HORIZONTAL);
-  menuItemMap.addButtons(new SimpleRadioButton [] {buttonInfo.clone(), buttonManager.clone()});
+
   menuBench=new RadioButton (513, 32, 160, 32, RadioButton.HORIZONTAL);
   menuBench.addButtons(new SimpleRadioButton [] {buttonTask.clone(), buttonInfo.clone(), buttonManager.clone(), buttonMaintenance.clone(), buttonCargo.clone()});
 
@@ -115,6 +118,7 @@ void setupInterface() {
           if (sum_money<=world.company.money) {
             terminal.refund=sum_money;
             world.company.money-=sum_money;
+            printConsole("[РАСХОД] покупка "+product.name+": "+getDecimalFormat(sum_money)+" $");
             product.pool-=terminal.count_operation;       
             start=true;
           } else
@@ -123,26 +127,38 @@ void setupInterface() {
         if (start) {
           terminal.product=product.id;
           terminal.progress=0;
+          if (terminal instanceof Workbench)
+          printConsole("новое задание для "+terminal.name+" на изготовление "+data.getItem(product.id).name+" ("+terminal.count_operation+")");
+          else if (terminal instanceof DevelopBench)
+          printConsole("новое задание для "+terminal.name+" на разработку "+data.getItem(product.id).name);
+          else
+            printConsole("новое задание для "+terminal.name+" на доставку "+data.getItem(product.id).name+" ("+terminal.count_operation+")");
         }
       }
     }
   }
   );
-
-  buttonSend = new SimpleButton(322, 354, 96, 28, "отправить", new Runnable() {
-    public void run() {
-      input(input.getText());  
-      input.clear();
-    }
-  }
-  );
-  buttonPause = new SimpleButton(247, 0, 32, 32, spr_pause, new Runnable() {
+  buttonPause = new SimpleButton(281, 0, 32, 32, spr_pause, new Runnable() {
     public void run() {
       world.pause=true;
     }
   }
   );
-  buttonStart = new SimpleButton(247, 0, 32, 32, spr_play, new Runnable() {
+  buttonForward = new SimpleButton(313, 0, 32, 32, spr_forward, new Runnable() {
+    public void run() {
+      world.speed-=world.stepSpeed;
+      world.speed=constrain(world.speed, world.minSpeed, world.maxSpeed);
+    }
+  }
+  );
+  buttonBackward = new SimpleButton(247, 0, 32, 32, spr_backward, new Runnable() {
+    public void run() {
+      world.speed+=world.stepSpeed;
+      world.speed=constrain(world.speed, world.minSpeed, world.maxSpeed);
+    }
+  }
+  );
+  buttonStart = new SimpleButton(281, 0, 32, 32, spr_play, new Runnable() {
     public void run() {
       world.pause=false;
     }
@@ -167,7 +183,7 @@ void setupInterface() {
       String name = dialog.showTextInputDialog("введите название:");
       if (name!=null) {
         if (name.length()>0) {
-          input("смена названия компании на: "+name); 
+          printConsole("комнания "+world.company.name+" переименована в: "+name);
           world.company.name=name;
         }
       }
@@ -181,6 +197,7 @@ void setupInterface() {
         String name = dialog.showTextInputDialog("введите имя:");
         if (name!=null) {
           if (name.length()>0) 
+          printConsole("объект "+object.name+" переименован в: "+name);
           object.name=name;
         }
       }
@@ -199,18 +216,6 @@ void setupInterface() {
       ComponentList itemList = world.room.getItemsIsContainers(Database.ALL);
       int item = itemList.getComponent(mainList.select.id);
       world.room.removeItems(item, itemList.calculationItem(item));
-    }
-  }
-  );
-  buttonRepair= new SimpleButton(536, 176, 215, 32, "отремонтировать", new Runnable() {
-    public void run() {
-      Object object =world.room.currentObject;
-      if (object instanceof Terminal) {
-        Terminal terminal = (Terminal)object;
-        terminal.hp=terminal.hp_max;
-        dialog.showInfoDialog("стоимость ремонта "+terminal.name+": "+400+"$");
-        world.company.money-=400;
-      }
     }
   }
   );
@@ -308,6 +313,9 @@ void setupInterface() {
         Order order = world.orders.getOrder(mainList.select.id);
         world.company.opened.add(order);
         world.orders.remove(order);
+        order.date=null;
+        order.date=order.getDateForDays(order.day);
+        printConsole("заказ № "+order.id+" "+data.getItem(order.product).name+" ("+order.count+") открыт");
       } else
         dialog.showInfoDialog("превышен лимит открытых заказов");
     }
@@ -323,6 +331,7 @@ void setupInterface() {
           world.company.closed.add(order);
           world.company.money+=order.cost;
           world.company.exp+=order.exp;
+          printConsole("заказ № "+order.id+" "+data.getItem(order.product).name+" ("+order.count+") закрыт");
         } else
           dialog.showInfoDialog("не выполнены условия");
       }
@@ -338,7 +347,9 @@ void setupInterface() {
         float forfeit = getDecimalFormat(order.cost*0.05);
         world.company.money-=forfeit;
         world.company.update();
+        printConsole("заказ № "+order.id+" "+data.getItem(order.product).name+" ("+order.count+") отменен, штраф: "+forfeit+" $");
         dialog.showInfoDialog("заказ отменен, штраф: "+forfeit+" $");
+        printConsole("[РАСХОД] штраф: "+forfeit+" $");
       }
     }
   }
@@ -347,15 +358,23 @@ void setupInterface() {
     public void run() {
       String name = dialog.showTextInputDialog("новая должность:");
       if (name!=null) {
-        if (name.length()>0) 
-        world.company.professions.addNewProfession(name);
+        if (name.length()>0) {
+          world.company.professions.addNewProfession(name);
+          printConsole("изменено штатное расписание, введена должность: "+name);
+        }
       }
     }
   }
   );
   buttonProfRemove = new SimpleButton(528, 554, 160, 32, "упразднить", new Runnable() {
     public void run() {
-      world.company.professions.removeProfessionIsName(mainList.select.label);
+      Profession prof = world.company.professions.getProfessionIsName(mainList.select.label);
+      world.company.professions.remove(prof);
+      for (Worker worker : world.company.workers) {
+        if (worker.profession==prof)
+        worker.profession=null;
+      }
+      printConsole("должность "+mainList.select.label+" упразднена, следующие рабочие не назначены: "+world.company.workers.getWorkers(null).getNames());
     }
   }
   );
@@ -374,13 +393,17 @@ void setupInterface() {
   );
   buttonRecrutAdd = new SimpleButton(528, 520, 160, 32, "нанять рабочего", new Runnable() {
     public void run() {
-      world.company.addWorker("Виктор Пелевин", 6);
+      String name = "Виктор Пелевин";
+      world.company.addWorker(name, 6);
+      printConsole("принят новый рабочий: "+name);
     }
   }
   );
   buttonRecrutRemove = new SimpleButton(528, 554, 160, 32, "уволить", new Runnable() {
     public void run() {
+      String name = world.company.workers.getWorkerIsId(mainList.select.id).name;
       world.company.workers.removeWorkerId(mainList.select.id);
+      printConsole("рабочий "+name+" был уволен");
     }
   }
   );
@@ -392,8 +415,10 @@ void setupInterface() {
         if (select != null) {
           if (!select.equals("не выбрано")) {
             Profession profession =  world.company.professions.getProfessionIsName(select); 
-            if (profession!=null) 
-            worker.profession=profession;
+            if (profession!=null) {
+              worker.profession=profession;
+              printConsole("рабочий "+worker.name+" назначен на должность "+profession.name);
+            }
           } else
             worker.profession = null;
         }
@@ -401,17 +426,9 @@ void setupInterface() {
     }
   }
   );
-  input = interfaces.addTextfield("input").setColorForeground(white)
-    .setPosition(1, 353)
-    .setSize(320, 32)
-    .setFont(createFont("arial", 16))
-    .setFocus(true)
-    .setColor(white)
-    .setColorActive(white)
-    .setColorBackground(black);
   console = interfaces.addTextarea("console")
-    .setPosition(1, _sizeY-215)
-    .setSize(_sizeX-290, 213)
+    .setPosition(1, _sizeY-world.room.sizeY*32)
+    .setSize(_sizeX-290, 184)
     .setFont(createFont("arial", 14))
     .setLineHeight(28)
     .setColor(white)
@@ -444,26 +461,16 @@ void setupInterface() {
     .setScrollBackground(black)
     .setLineHeight(14);
 }
-
-public void input(String message) {
-  if (message.length()>0) {
-    JSONObject intent = new JSONObject();
-    intent.setString("name", world.company.name);
-    intent.setInt("id_message", 2);
-    intent.setString("text", message);
-    client.write(intent.toString());
-  }
+void printConsole(String text) {
+  if (text.length()>0) 
+    console.append("\n["+world.date.getDate()+"] "+text).scroll(1);
 }
-
 void infoControl(Textarea textArea, String text) {
   textArea.setText(text);
   textArea.setVisible(true);
 }
-
 void maintenanceControl(Terminal terminal) {
   showScaleText(terminal.getCharacters(), 518, 90);
-  if (terminal.hp<terminal.hp_max)
-    buttonRepair.setActive(true);
 }
 void cargoControl(ComponentList items) {
   showScaleText("предметы:", 524, 90);
@@ -507,7 +514,7 @@ void taskControl(Terminal terminal) {
 void taskMainControl(Terminal terminal) {
   if (terminal.product==-1) {        //если продукт не назначен
     if (terminal instanceof DevelopBench) {
-    terminal.products.clear();
+      terminal.products.clear();
       terminal.products=world.room.getListAllowProducts();
     }
     if (terminal.products!=null) {      //если список продуктов существует
@@ -519,10 +526,9 @@ void taskMainControl(Terminal terminal) {
           showScaleText("изделия:", 524, 90);  
         else
           showScaleText("ресурсы:", 524, 90);
-        if (terminal instanceof DevelopBench) {
-
+        if (terminal instanceof DevelopBench) 
           mainList.loadComponents(terminal.products.getListNotWork()); //загружает откорректированный список чертежей
-        } else
+        else
           mainList.loadComponents(terminal.products); //загружает продукты в список
         mainList.setActive(true);  //отображает список
         if (mainList.select!=null) {  //если 
@@ -549,8 +555,13 @@ void taskMainControl(Terminal terminal) {
             secondList.loadDevelopComponents(data.getListisComponent(mainList.select.id));
           }
         }
-      } else 
-      showScaleText("недоступно", 522, 80);
+      } else {
+
+        if (terminal instanceof Workbench)
+          infoControl(objectInfo, "выдача заданий недоступна, необходимо разрабатывать чертежи");
+        else if (terminal instanceof DevelopBench)
+          infoControl(objectInfo, "нет доступных чертежей для разработки");
+      }
     }
   } else {
     if (terminal.label==null) {
@@ -572,14 +583,11 @@ void taskMainControl(Terminal terminal) {
 
 void updateInterface() {
   //текст консоли
-  console.setPosition(new float [] {1, map(_sizeY-215, 0, _sizeY, 0, context.height)});
-  console.setSize(int(context.width-290*getScaleX()), int(213*getScaleY()));
-
+  console.setPosition(new float [] {1, map(_sizeY-182, 0, _sizeY, 0, context.height)});
+  console.setSize(int(context.width-290*getScaleX()), int(180*getScaleY()));
   stroke(white);
   noFill();
-  rect(console.getPosition()[0]-1, console.getPosition()[1]-1, int(context.width-290*getScaleX())+2, int(245*getScaleY())+2);
-  input.setPosition(new float [] {1, map(353, 0, _sizeY, 0, context.height)});
-  input.setSize(int(320*getScaleX()), int(32*getScaleY()));
+  rect(console.getPosition()[0]-1, console.getPosition()[1]-1, int(context.width-290*getScaleX())+2, int(181*getScaleY()));
 
   //текст информации об объекте
   float oy=map(78, 0, _sizeY, 0, context.height);
@@ -609,7 +617,6 @@ void updateInterface() {
   buttonRemoveObject.setActive(false);
   buttonRemoveItem.setActive(false);
   buttonRemoveAllItem.setActive(false);
-  buttonRepair.setActive(false);
   buttonRecrutAdd.setActive(false);
   buttonRecrutRemove.setActive(false);
   buttonProfAdd.setActive(false);
@@ -620,9 +627,9 @@ void updateInterface() {
   buttonRotateObject.setActive(false);
   buttonRenameObject.setActive(false);
   buttonRenameCompany.setActive(false);
-  menuSimple.setActive(false);
+  menuWorker.setActive(false);
+  menuContainer.setActive(false);
   menuBench.setActive(false);
-  menuItemMap.setActive(false);
   menuOrders.setActive(false);
   menuTasker.setActive(false);
   menuReciept.setActive(false);
@@ -674,27 +681,24 @@ void updateInterface() {
             taskMainControl(terminal);
         }
       } else if (object instanceof Container) {
-        menuSimple.control();
-        event= menuSimple.select.event;
+        menuContainer.control();
+        event= menuContainer.select.event;
         Container container = (Container) object;
         if (event.equals("getInfo")) 
           infoControl(objectInfo, container.getDescript());
         else if (event.equals("getCargo"))
           cargoControl(container.items);
       } else if (object instanceof Worker) {
-        menuSimple.control();
-        event= menuSimple.select.event;
+        menuWorker.control();
+        event= menuWorker.select.event;
         Worker worker = (Worker) object;
         if (event.equals("getInfo"))
           infoControl(objectInfo, worker.getDescript());
         else if (event.equals("getCargo"))
           cargoControl(worker.items);
       } else if (object instanceof ItemMap) {
-        menuItemMap.control();
-        event= menuItemMap.select.event;
         ItemMap itemMap = (ItemMap) object;
-        if (event.equals("getInfo")) 
-          infoControl(objectInfo, data.getItem(itemMap.item).name+itemMap.getIsJobLock());
+        infoControl(objectInfo, data.getItem(itemMap.item).name+" ("+itemMap.count+")"+itemMap.getIsJobLock());
       }
       if (event.equals("getManager")) {
         buttonRemoveObject.setActive(true);
@@ -703,10 +707,8 @@ void updateInterface() {
         if (object instanceof Terminal)
           buttonRotateObject.setActive(true);
       }
-    } else {
-
-      ////////////////////
-    }
+    } else 
+    infoControl(objectInfo, "выберите объект");
   } else if (menuMain.select.event.equals("showMenuCompany")) {
     world.setActive(true);
     world.room.setActiveLabels(false);
@@ -758,13 +760,17 @@ void updateInterface() {
       showScaleText("заказы (отмененные):", 524, 90);
     }
     if (mainList.select!=null) {
-      infoControl(listInfo, world.allOrders.getOrder(mainList.select.id).getDescript());
-      if (menuOrders.select.event.equals("showAllOrders"))
+      if (menuOrders.select.event.equals("showAllOrders")) {
+        infoControl(listInfo, world.orders.getOrder(mainList.select.id).getDescript());
         buttonOpenOrder.setActive(true);
-      else if (menuOrders.select.event.equals("showOpenOrders")) {
+      } else if (menuOrders.select.event.equals("showOpenOrders")) {
+        infoControl(listInfo, world.company.opened.getOrder(mainList.select.id).getDescript());
         buttonCloseOrder.setActive(true);
         buttonCancelOrder.setActive(true);
-      }
+      } else if (menuOrders.select.event.equals("showCloseOrders")) 
+        infoControl(listInfo, world.company.closed.getOrder(mainList.select.id).getDescript());
+      else if (menuOrders.select.event.equals("showFailOrders")) 
+        infoControl(listInfo, world.company.failed.getOrder(mainList.select.id).getDescript());
     }
   } else if (menuMain.select.event.equals("showItems")) {
     world.room.setActiveLabels(true);
@@ -788,7 +794,6 @@ void updateInterface() {
     mainList.loadObjects(data.objects);
     if (mainList.select!=null) {
       infoControl(listInfo, "цена: "+data.objects.getId(mainList.select.id).cost+" $");
-
       if (world.hover)
         world.newObj = data.objects.getId(mainList.select.id);
     }
@@ -797,7 +802,7 @@ void updateInterface() {
 
   showScaleText("$: "+str(world.company.money), 16, 25);
   showScaleText(world.date.getDate(), 128, 25);
-
+  showScaleText("x"+int(map(world.speed, world.minSpeed, world.maxSpeed, world.maxSpeed/world.stepSpeed, 0)+1), 356, 25);
   pushStyle();
   text("FPS: "+int(frameRate)+"\n"
     +"mouse x: "+mouseX+"\n"
@@ -1088,7 +1093,6 @@ class Listbox extends ScaleActiveObject {
     }
     setPrevSelect(prev_select);
   }
-
   void loadItems(ComponentList list) {
     int prev_select = getPrevSelect();
     for (int part : list.sortItem()) 

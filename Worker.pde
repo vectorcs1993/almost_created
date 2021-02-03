@@ -1,18 +1,17 @@
 PImage spr_worker;
-int max_skill_level=10;
+int max_skill_level=5;
 
 class Worker extends WorkObject {
   float cost, payday;
   int x, y, capacity;
   PImage sprite;
-  HashMap skills_values;
+  HashMap skills_values, skills_levels;
   ComponentList items;
   Profession profession;
 
   //служебные для поиска пути
   GraphList path;
   Graph target, nextNode;
-
   Timer update, upgrade;
 
   Worker (int id, String name, int capacity) {
@@ -20,7 +19,7 @@ class Worker extends WorkObject {
     this.id=id;
     this.capacity=capacity;
     cost = 500;  
-    payday = 50;
+    payday = 10;
     x=y=direction=0;
     sprite = spr_worker;
     path = new GraphList ();
@@ -31,6 +30,7 @@ class Worker extends WorkObject {
     this.name = name;
     profession = null;
     skills_values = createSkillsValues();
+    skills_levels = createSkillsLevels();
   }
   void draw() {
     pushMatrix();
@@ -81,10 +81,20 @@ class Worker extends WorkObject {
       skills.put(i, 0);
     return skills;
   }
+  HashMap createSkillsLevels() {
+    HashMap skills = new HashMap <Integer, Integer>(); 
+    for (int i : getAllSkills())
+      skills.put(i, 1);
+    return skills;
+  }
   String getSkills() {
     String string = "";
-    for (int skill : getAllSkills()) 
-      string+=getSkillName(skill)+": "+getWorkModificator(skill)+"\n";
+    for (int skill : getAllSkills()) {
+      if (skills_values.get(skill).hashCode()!=0)
+        string+=getSkillName(skill)+": "+skills_levels.get(skill).hashCode()+" ("+skills_values.get(skill).hashCode()+")\n";
+      else
+        string+=getSkillName(skill)+": "+skills_levels.get(skill).hashCode()+"\n";
+    }
     return string;
   }
   int [] getAllSkills() {
@@ -100,7 +110,7 @@ class Worker extends WorkObject {
         else 
         job.update();
       }
-      update.set(map(timer, 0, max_skill_level, 600, 50));
+      update.set(map(timer, 0, max_skill_level, 400, 50));
     }
     draw();
     if (job!=null) {
@@ -116,21 +126,21 @@ class Worker extends WorkObject {
   }
   float getDirectionRad() {
     switch (direction) {
-    case 1: 
+    case 1:   //направо
       return radians(90);
-    case 2:  
+    case 2:  //вниз
       return radians(180);
-    case 3:  
+    case 3:  //влево
       return radians(270);
-    case 4:  
+    case 4:  //вверх-вправо
       return radians(45);
-    case 5:  
+    case 5:  //вниз-вправо
       return radians(135);
-    case 6:  
+    case 6:  //вниз-влево
       return radians(-135);
-    case 7:  
+    case 7:  //вверх-влево
       return radians(-45);
-    default:  
+    default:  //вверх
       return radians(0);
     }
   }
@@ -189,14 +199,23 @@ class Worker extends WorkObject {
     if (max_skill_level>getWorkModificator(work)) {   //если уровень рабочего не превышает максимальный
       int skill =  skills_values.get(work).hashCode()+1;
       skills_values.put(work, skill);
+      int level = skills_levels.get(work).hashCode();
+      if (skills_values.get(work).hashCode()>=getExpForLevel(level)) {
+        skills_levels.put(work, level+1);
+        printConsole("рабочий "+name+" достиг уровня: "+str(level+1)+" в навыке "+getSkillName(work));
+      }
     }
   }
+  private int getExpForLevel(int level) { //функция возвращает порог опыта для соответствующего ему уровня level
+    return int(1000*pow(2, level-1));
+  }
   int getWorkModificator(int work) {
-   // if (work==Job.MOVE)  //если рабочий просто бродит то его скорость равна максимальной скорости при транспортировке
-  //    work=Job.CARRY;
-  //  return ceil(skills_values.get(work).hashCode()/100)+1;
-return 8;  
-}
+    if (work==Job.MOVE) { //если рабочий просто бродит то его скорость равна максимальной скорости при транспортировке
+      work=Job.CARRY;
+      return skills_levels.get(Job.CARRY).hashCode();    
+    } else 
+    return skills_levels.get(work).hashCode();
+  }
   private void setDirection(int x, int y) {
     if (x<this.x && y==this.y)
       direction=3;
@@ -308,6 +327,7 @@ class WorkerList extends ArrayList <Worker> {
     }
     return people;
   }
+
   WorkerList getWorkers(Profession profession) {
     WorkerList people  = new WorkerList();
     for (Worker worker : this) {
@@ -315,6 +335,15 @@ class WorkerList extends ArrayList <Worker> {
         people.add(worker);
     }
     return people;
+  }
+  String getNames() {
+    String names="";
+    for (Worker worker : this) {
+      names+=worker.name;
+      if (this.indexOf(worker)!=this.size()-1)
+        names+=", ";
+    }
+    return names;
   }
 }
 

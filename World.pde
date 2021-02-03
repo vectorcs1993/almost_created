@@ -5,18 +5,22 @@ class World extends ScaleActiveObject {
   float size_grid;
   Company company;
   Database.DataObject newObj;
-  OrderList orders, allOrders;
+  OrderList orders;
   boolean pause, input;
   int level;
   Date date;
+  int speed, minSpeed, maxSpeed, stepSpeed;
 
   World (float xx, float yy, float ww, float hh) {
     super(xx, yy, ww, hh);
     room = new Room(int(ww/32), int(hh/32));
     size_grid=32;
+    speed=300;
+    minSpeed=0;
+    maxSpeed=300;
+    stepSpeed=100;
     company=new Company ("Robocraft");
     orders = new OrderList();
-    allOrders = new OrderList();
     date = new Date (1, 5, 2019);
     input=true;
     level=0;
@@ -42,13 +46,11 @@ class World extends ScaleActiveObject {
       for (Timer part : timers)   //отсчет таймеров
         part.tick();
       date.tick();
+
+
+
       //добавление новых заказов
-      allOrders.clear();
-      allOrders.addAll(orders);
-      allOrders.addAll(company.opened);
-      allOrders.addAll(company.closed);
-      allOrders.addAll(company.failed);
-      if (orders.isEmpty() || orders.size()<company.ordersLimited) {
+      if ((orders.isEmpty() || orders.size()<company.ordersLimited)) {
         int item = data.items.getRandom(Database.RESHEARCHED).id; //определяет изделие
         int scope_one =data.getItem(item).scope_of_operation+data.getItem(item).reciept.getScopeTotal();
         int count = 1+int(random(1000*world.company.getLevel())/scope_one); //определяет количество  
@@ -58,10 +60,20 @@ class World extends ScaleActiveObject {
         float cost = count*cost_one;  //определяет общую стоимость объектов 
         float exp=scope_one/world.company.getLevel();  
         if (cost<=1000*world.company.getLevel())
-          orders.add(new Order(allOrders.getLastId(), item, count, cost, deadLine, exp));
+          orders.add(new Order(orders.getLastId(), item, count, cost, deadLine, exp));
       }
-      for (Order order : orders)
+      boolean newOrders=false;
+      for (int i=orders.size()-1; i>=0; i--) {
+        Order order = orders.get(i);
         order.update();
+        if (order.isFail(date)) {
+          orders.remove(order);
+          order = null;
+          newOrders=true;
+        }
+      }
+      if (newOrders)
+        printConsole("список доступных заказов обновлен");
       OrderList failed = company.opened.getFailOrders(date);
       if (!failed.isEmpty()) {
         String ordersNames ="\n"+failed.getLabels();
@@ -72,7 +84,11 @@ class World extends ScaleActiveObject {
           company.failed.add(order);
         }
         cost = getDecimalFormat(cost);
-        dialog.showInfoDialog("следующие заказы просрочились: "+ordersNames+" на сумму: "+cost+" $");
+        float forfeit = getDecimalFormat(cost*0.2);
+        company.money-=forfeit;
+        dialog.showInfoDialog("следующие заказы просрочились: "+ordersNames+" на сумму: "+cost+" $, штраф: "+forfeit+" $");
+        printConsole("просроченные заказы: "+ordersNames+" на сумму: "+cost+" $, штраф: "+forfeit+" $");
+        printConsole("[РАСХОД] штраф: "+forfeit+" $");
       }
     }
   }
@@ -133,7 +149,6 @@ class World extends ScaleActiveObject {
     } else 
     return null;
   }
-
   void selectCurrentObject() {
     if (room!=null) {
       WorkObject object = getObject();
@@ -160,6 +175,7 @@ class World extends ScaleActiveObject {
                     WorkObject newObject = data.getNewObject(newObj);
                     if (newObject!=null) {
                       company.money-=newObj.cost;
+                      printConsole("[РАСХОД] постройка объекта "+newObj.name+": "+getDecimalFormat(newObj.cost)+" $");
                       world.room.object[_x][_y]=newObject;
                     }
                   } else 
@@ -304,6 +320,7 @@ class World extends ScaleActiveObject {
           }
         }
       }
+      printConsole("не удалось выгрузить "+data.getItem(id).name+" ("+count+"), нет свободного места");
       return count;
     }
     ComponentList getItemsIsContainers(int filter) {
@@ -354,7 +371,6 @@ class World extends ScaleActiveObject {
       }
       return list;
     }
-
     int getShearchInItemMap(IntList items) { 
       for (int part : items) { 
         if (getAllObjects().getItems().getItemById(part)!=null) 
@@ -421,7 +437,6 @@ class World extends ScaleActiveObject {
       }
       return labels;
     }
-
     public WorkObjectList getAllObjects() {
       WorkObjectList objects = new WorkObjectList();
       for (int ix=0; ix<sizeX; ix++) {
@@ -432,9 +447,6 @@ class World extends ScaleActiveObject {
       }
       return objects;
     }
-
-
-
     private void drawGrid() {
       for (int ix=0; ix<sizeX; ix++) {
         for (int iy=0; iy<sizeY; iy++) {
@@ -449,7 +461,6 @@ class World extends ScaleActiveObject {
         }
       }
     }
-
     public void draw() {
       for (int ix=0; ix<sizeX; ix++) {
         for (int iy=0; iy<sizeY; iy++) {

@@ -47,7 +47,7 @@ class Database {
     }
     return projects;
   }
-  ComponentList getResources() {//можно объединить с верхним
+  ComponentList getResources() {
     ComponentList list = new ComponentList(items);
     for (DataObject object : items) {
       if (object.reciept==null) 
@@ -93,11 +93,19 @@ class Database {
       return list.get(random);
     }
     void putPool() {
-      for (DataObject object : this) {
-        if (object.reciept==null) {
+      String resources="";
+      ComponentList res = getResources();
+      for (int id : res) {
+        DataObject object = getItem(id);
+        if (object.pool<object.maxPool) {
           object.pool+=int(object.maxPool/20);
           object.pool=constrain(object.pool, 50, object.maxPool);
+          resources+=getItem(id).name+", ";
         }
+      }
+      if (resources.length()>2) {
+        resources=resources.substring(0, resources.length()-2);
+        printConsole("изменилась цена на: "+resources);
       }
     }
   }

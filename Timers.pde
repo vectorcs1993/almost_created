@@ -11,10 +11,10 @@ class Timer {
   void set(float set) {
     timing=millis();
     flag=true;
-    this.set=set;
+    this.set=set+world.speed;
   }
   void tick() {
-    if (millis() - timing > set)                                                                // таймер прерывания на движение игрока 
+    if (millis() - timing > set)     // таймер прерывания на движение игрока 
       flag=false;
     else 
     flag=true;
@@ -36,18 +36,18 @@ class Date {
   }
   protected void tick() {
     if (!timer.check()) {
+
       update();
-      timer.set(getTick());
+      
+      timer.set(world.speed);
     }
   }
-  long getTick() {
-    return 100;
-  }
   void newDay() {
-   data.items.putPool(); //восполнение мировых запасов ресурсов
-   world.company.setExpenses();
+    data.items.putPool(); //восполнение мировых запасов ресурсов
+    world.company.setExpenses();
+    printConsole("новый рабочий день");
   }
-  
+
   void update() {
     minute++;
     if (minute>59) {
@@ -66,6 +66,25 @@ class Date {
       }
     }
   }
+  boolean isPassed(Date date) {
+      if (date.month>month)
+        return true;
+      else {
+        if (date.day>day)
+          return true;
+        else {
+          if (date.hour>hour)
+            return true;
+          else {
+            if (date.minute>minute)
+              return true;
+            else 
+            return false;
+          }
+        }
+      }
+    }
+  
   String isNotZero(int num) {
     if (num<10)
       return "0"+str(num);
@@ -78,7 +97,9 @@ class Date {
   String getDate() {
     return  isNotZero(hour)+":"+isNotZero(minute)+" "+isNotZero(day)+"."+isNotZero(month)+"."+year;
   }
-
+  String getTime() {
+    return  isNotZero(hour)+":"+isNotZero(minute);
+  }
   public int getDays(int scope) { //принимает трудоемкость с учетом количества
     int all_second = 86400/100;
     return int(scope/all_second);

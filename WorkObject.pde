@@ -198,11 +198,16 @@ class Terminal extends WorkObject {
           progress+=100;//job_modificator;
           hp-=wear;
           if (progress>=getMaxProgress()) {
-
             if (this instanceof DevelopBench) {
+              printConsole("чертеж "+data.getItem(product).name+" разработан");
+              printConsole("объект "+data.objects.getId(data.getItem(product).work_object).name+": список доступных изделий обновлен");
               data.objects.getId(data.getItem(product).work_object).products.append(product);
               removeLabel();
             } else {
+              if (this instanceof Workbench) 
+                printConsole("предмет "+data.getItem(product).name+" ("+count_operation+") изготовлен");
+              else
+                printConsole("ресурс "+data.getItem(product).name+" ("+count_operation+") доставлен");
               int [] place = world.room.getAbsCoordObject(this);
               int count=world.room.addItem(place[0], place[1], product, data.getItem(product).count_operation*count_operation);
               if (count<=0)
@@ -216,7 +221,6 @@ class Terminal extends WorkObject {
                   label.setActive(false);
               }
             }
-            
           }
         }
       }
@@ -335,8 +339,11 @@ class DevelopBench extends Terminal {
     return data.getItem(product).reciept.getScopeTotal();
   }
   String getDescriptTask() {
-    return "сложность: "+data.getItem(mainList.select.id).reciept.getScopeTotal()+"\n"+
-      "изготавливается: "+data.objects.getId(data.getItem(mainList.select.id).work_object).name;
+    String difficultyText="";
+    int difficulty = data.getItem(mainList.select.id).reciept.getScopeTotal();
+    if (difficulty!=0)
+      difficultyText = "сложность: "+difficulty+"\n";
+    return difficultyText+"изготавливается: "+data.objects.getId(data.getItem(mainList.select.id).work_object).name;
   }
   String getProductDescript() {
     if (label==null)

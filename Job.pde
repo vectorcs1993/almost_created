@@ -54,6 +54,7 @@ class JobInTerminal extends Job {
     
   }
   String getStatus() {
+    if (terminal.product!=-1) {
     if (work==SUPPLY)
       return data.label.get("job_supplies")+" "+data.getItem(terminal.product).name;
     else if (work==DEVELOP)
@@ -63,7 +64,10 @@ class JobInTerminal extends Job {
     else if (work== ASSEMBLY)
       return data.label.get("job_assemble")+" "+data.getItem(terminal.product).name;
     else 
-    return null;
+    return "ожидание";
+    } else 
+       return "ожидание";
+   
   }
   void update() {
     if (!moveToTerminal.isComplete())
@@ -243,7 +247,7 @@ class JobCarry extends Job {
     else if (move.isComplete() && inWorker.isComplete() && !inObject.isComplete() && move== moveToObject) 
       return inObject.getStatus();
     else 
-    return "не понятно";
+    return "ожидание";
   }
   int getProcess() {
     if (move.isComplete() && !inWorker.isComplete() && !inObject.isComplete() && move==moveFromObject) 
@@ -382,6 +386,8 @@ class JobRepair extends Job {
     moveToObject = new JobMove(worker, targetBench);
   }
   boolean isComplete() {
+    if (terminal.hp>=100)
+         printConsole("объект "+terminal.name+" отремонтирован");
     return terminal.hp>=100;
   }
   String getStatus() {

@@ -15,8 +15,8 @@ class Company {
     closed=new OrderList();
     failed=new OrderList();
     buildingLimited = 15;
-    ordersLimited = 36;
-    ordersOpenLimited=5;
+    ordersLimited = 6;
+    ordersOpenLimited=3;
     exp = 0;
 
     professions = new ProfessionList();
@@ -24,8 +24,8 @@ class Company {
     professions.addNewProfession("разнорабочий");
     workers = new WorkerList();
     addWorker("Виктор Функ", 6);
-    addWorker("Михаил Маричев", 8);
-    addWorker("Аким Мульцин", 6);
+    addWorker("Михаил Ларичев", 6);
+   addWorker("Аким Мульцин", 6);
   }
   public String getInfo() {
     return "наименование: "+name+"\n"+
@@ -38,8 +38,6 @@ class Company {
       "работников: "+workers.size() +"\n";
   }
   public void update() {
-
-
     for (Worker worker : workers) {
       if (worker.job==null) {
         if (worker.profession!=null) {
@@ -137,8 +135,8 @@ class Company {
                 container = (Container)containers.getNearestObject(worker.x, worker.y);
                 if (container!= null) {
                   if (data.getItem(itemMap.item).weight<=worker.capacity) {
-                  worker.job = new JobCarryItemMap(worker, itemMap, container);
-                  continue;
+                    worker.job = new JobCarryItemMap(worker, itemMap, container);
+                    continue;
                   }
                 }
               }
@@ -154,9 +152,11 @@ class Company {
           }
           int x = int(random(world.room.sizeX));
           int y = int(random(world.room.sizeY));
-          if (getPathTo(world.room.node[worker.x][worker.y], world.room.node[x][y])!=null) 
-            worker.job= new JobMove (worker, world.room.node[x][y]);
+         if (getPathTo(world.room.node[worker.x][worker.y], world.room.node[x][y])!=null) 
+           worker.job= new JobMove (worker, world.room.node[x][y]);
         }
+      } else {
+         //если работа есть
       }
     }
     money=getDecimalFormat(money);
@@ -177,6 +177,7 @@ class Company {
     for (Worker worker : workers) 
       sum_money+=worker.payday;
     money-=sum_money;
+    printConsole("[РАСХОД] заработная плата рабочим: "+sum_money+" $");
     update();
   }
   int getLevel() {

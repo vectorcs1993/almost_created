@@ -47,7 +47,6 @@ class Order {
       month+=tMonth;
     } else 
     day+=days;
-
     return new Date (day, month, year);
   }
   public void update() {
@@ -57,14 +56,6 @@ class Order {
       exp = scope*count;
     else 
     exp = (scope/world.company.getLevel())*count;
-
-
-
-
-    if (isFail(date)) {
-      date=null;
-      date=getDateForDays(day);
-    }
   }
 }
 

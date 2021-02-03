@@ -27,7 +27,6 @@ class WorkLabel extends ScaleActiveObject {
 
   protected void drawCount(int count) {
     pushMatrix();
-    // translate(-world.size_grid/2, -world.size_grid/2);
     pushStyle();
     strokeWeight(1);
     rectMode(CORNERS);
@@ -44,7 +43,6 @@ class WorkLabel extends ScaleActiveObject {
   public void mousePressed() {
     if (newProduct) {
       data.objects.getId(data.getItem(item).work_object).products.append(item);
-      ComponentList components =  data.objects.getId(WorkObject.DEVELOPBENCH).products;
       Terminal terminal = world.room.getObjectAtLabel(this);
       terminal.removeLabel();
     } else {
