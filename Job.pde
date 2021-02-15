@@ -1,4 +1,3 @@
-
 class JobMove extends Job {   //работа по перемещению 
   Graph target;
   JobMove (Worker worker, Graph target) {
@@ -47,27 +46,27 @@ class JobInTerminal extends Job {
     moveToTerminal = new JobMove(worker, targetTerminal);
   }
   boolean isComplete() {
-    if (terminal.label==null)
-    return terminal.product==-1;
+    if (exit)
+      return true;
+    if (terminal.label==null) 
+      return terminal.product==-1;
     else 
-      return terminal.label!=null;
-    
+    return terminal.label!=null;
   }
   String getStatus() {
     if (terminal.product!=-1) {
-    if (work==SUPPLY)
-      return data.label.get("job_supplies")+" "+data.getItem(terminal.product).name;
-    else if (work==DEVELOP)
-      return data.label.get("job_develops")+" "+data.getItem(terminal.product).name;
-    else if (work== CREATE)
-      return data.label.get("job_created")+" "+data.getItem(terminal.product).name;
-    else if (work== ASSEMBLY)
-      return data.label.get("job_assemble")+" "+data.getItem(terminal.product).name;
-    else 
-    return "ожидание";
+      if (work==SUPPLY)
+        return data.label.get("job_supplies")+" "+data.getItem(terminal.product).name;
+      else if (work==DEVELOP)
+        return data.label.get("job_develops")+" "+data.getItem(terminal.product).name;
+      else if (work== CREATE)
+        return data.label.get("job_created")+" "+data.getItem(terminal.product).name;
+      else if (work== ASSEMBLY)
+        return data.label.get("job_assemble")+" "+data.getItem(terminal.product).name;
+      else 
+      return "ожидание";
     } else 
-       return "ожидание";
-   
+    return "ожидание";
   }
   void update() {
     if (!moveToTerminal.isComplete())
@@ -386,9 +385,10 @@ class JobRepair extends Job {
     moveToObject = new JobMove(worker, targetBench);
   }
   boolean isComplete() {
-    if (terminal.hp>=100)
-         printConsole("объект "+terminal.name+" отремонтирован");
-    return terminal.hp>=100;
+    float maxHp = data.objects.getId(terminal.id).maxHp;
+    if (terminal.hp>=maxHp)
+      printConsole("объект "+terminal.name+" отремонтирован");
+    return terminal.hp>=maxHp;
   }
   String getStatus() {
     return data.label.get("job_repaired")+" "+terminal.name;
@@ -399,7 +399,7 @@ class JobRepair extends Job {
     else {
       terminal.hp++;
       this.worker.work(Job.REPAIR);
-      constrain(terminal.hp, 0, terminal.hp_max);
+      constrain(terminal.hp, 0, data.objects.getId(terminal.id).maxHp);
       this.worker.setDirection(terminal.getX(), terminal.getY());
     }
   }

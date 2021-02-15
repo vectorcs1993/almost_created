@@ -4,14 +4,13 @@ abstract class WorkObject {
   String name;
   int direction;
   static final int CONTAINER = 0, TERMINAL = 14, WORKBENCH=16, DEVELOPBENCH =17, FOUNDDRY =18, SAW_MACHINE=19, WORKSHOP_MECHANICAL =21, 
-    EXTRUDER=22, WORKAREA =23;
+    EXTRUDER=22, WORKAREA =23,  GARAGE =24;
   Job job;
-  WorkObject(int id) {
+  WorkObject(int id, String name) {
     this.id=id; 
-    if (id!=-1) {
+    this.name=name;
+    if (id!=-1)
       sprite=data.objects.getId(id).sprite;
-      name = data.objects.getId(id).name;
-    }
     job=null;
     direction=0;
   }
@@ -43,11 +42,32 @@ abstract class WorkObject {
   }
   void drawSelected() {
     pushStyle();
+    fill(black);
+    float tx = getAdjXforPosition(getX()*world.size_grid, name);
+    float ty = getAdjYforPosition(getY()*world.size_grid);
+    rect(tx-5, ty - 18, textWidth(name)+10, 20);
+    fill(white);
+    text(name, tx, ty);
     noFill();
     stroke(green);
+    text(name, tx, ty);
     strokeWeight(3);
     rect(0, 0, world.size_grid, world.size_grid);
     popStyle();
+  }
+  float getAdjXforPosition(float x, String name) {
+    if (x+16-textWidth(name)/2<0)
+      return 0;
+    else if (x+16+textWidth(name)/2>world.room.sizeX*world.size_grid) 
+      return -textWidth(name)+32-5;
+    else
+      return 16-textWidth(name)/2;
+  }
+  float getAdjYforPosition(float y) {
+    if (y-32-textDescent()<=0)
+      return 96;
+    else
+      return -48;
   }
   void drawBottomSprite(PImage sprite) {
     pushStyle();
@@ -55,7 +75,6 @@ abstract class WorkObject {
     image(sprite, -world.size_grid/2, -world.size_grid/2);
     popStyle();
   }
-
   void drawCount(int count) {
     pushMatrix();
     translate(-world.size_grid/2, -world.size_grid/2);
@@ -63,12 +82,12 @@ abstract class WorkObject {
     strokeWeight(1);
     rectMode(CORNERS);
     fill(black);
-    stroke(white);
+    noStroke();
     rect(world.size_grid-textWidth(str(count))-3, world.size_grid-world.size_grid/2+3, world.size_grid-1, world.size_grid-1);
     textSize(10);
     textAlign(RIGHT, BOTTOM);
     fill(white);
-    text(count, world.size_grid-3, world.size_grid+1);
+    text(count, world.size_grid-3, world.size_grid);
     popStyle();
     popMatrix();
   }
@@ -117,7 +136,7 @@ abstract class WorkObject {
 class ItemMap extends WorkObject {
   int item, count;
   ItemMap (int item, int count) {
-    super(-1);
+    super(-1, null);
     this.item=item;
     this.count=count;
     sprite=data.getItem(item).sprite;
@@ -133,26 +152,27 @@ class ItemMap extends WorkObject {
   }
 }
 class Terminal extends WorkObject {
-  float hp, hp_max, wear, speed;
+  float hp, wear, speed;
   int product;
   WorkLabel label;
   ComponentList products;
   int count_operation;
   private float refund;
+  private int max_count_operation;
   Timer timer;
-  Terminal (int id) {
-    super(id);
+  Terminal (int id, String name, float hp) {
+    super(id, name);
     label=null;
     progress=0;
     product=-1;
     products = new ComponentList(data.items);
     products = data.objects.getId(id).products;
-    hp_max=100;
-    hp=hp_max;
+    this.hp=hp;
     wear=0.1;
     speed=60;
     count_operation=0;
     refund=0;
+    max_count_operation=1000;
     timer = new Timer();
   }
   protected void tick() {
@@ -182,11 +202,8 @@ class Terminal extends WorkObject {
   protected float getTick() {
     return speed;
   }
-  boolean getNewProduct() {
-    return false;
-  }
   int getMaxProgress() {
-    return 100+100/count_operation;
+    return int(map(count_operation, 0, max_count_operation, 300, 100));
   }
   void work() {  //функция выполняется из job, по этому проверка на job=isNull не нужна
     if (product!=-1) {
@@ -195,7 +212,7 @@ class Terminal extends WorkObject {
           if (this instanceof Workbench && ((Workbench)this).components.size()>0)
             ((Workbench)this).components.removeItems(data.getItem(product).reciept.getMult(count_operation));  //списание компонентов для изготовления
           int job_modificator = job.worker.getWorkModificator(data.objects.getId(id).type);
-          progress+=100;//job_modificator;
+          progress+=job_modificator;
           hp-=wear;
           if (progress>=getMaxProgress()) {
             if (this instanceof DevelopBench) {
@@ -209,26 +226,27 @@ class Terminal extends WorkObject {
               else
                 printConsole("ресурс "+data.getItem(product).name+" ("+count_operation+") доставлен");
               int [] place = world.room.getAbsCoordObject(this);
-              int count=world.room.addItem(place[0], place[1], product, data.getItem(product).count_operation*count_operation);
+              int count=world.room.addItem(place[0], place[1], product, count_operation);
               if (count<=0)
                 removeLabel();
               else {
                 float x=world.room.getCoordObject(this)[0];
                 float y=world.room.getCoordObject(this)[1];
                 float size=world.room.getCoordObject(this)[2];
-                label=new WorkLabel(x-10, y-10, size, size, product, count, getNewProduct(), getColor());
+                label=new WorkLabel(x-10, y-10, size, size, product, count, getColor());
                 if (!menuMain.select.event.equals("showObjects")) 
                   label.setActive(false);
               }
             }
           }
         }
-      }
+      } else 
+        job.exit=true;
     }
   }
   void update() {
     speed=constrain(speed, 0, 1000);
-    hp=constrain(hp, 0, 100);
+    hp=constrain(hp, 0, data.objects.getId(id).maxHp);
     wear=constrain(wear, 0.01, 0.5);
   }
   void removeLabel() {
@@ -247,12 +265,13 @@ class Terminal extends WorkObject {
       if (progress>0)
         drawStatus(5, progress, getMaxProgress(), green, red);
     }
-    if (hp<hp_max)
-      drawStatus(9, hp, hp_max, blue, red);
+    int maxHp=data.objects.getId(id).maxHp;
+    if (hp<maxHp)
+      drawStatus(9, hp, maxHp, blue, red);
   }
   public String getDescript() {
     return name+"\n"+
-      "состояние"+": "+getDecimalFormat(hp)+"/"+hp_max+"\n"+
+      "состояние"+": "+getDecimalFormat(hp)+"/"+data.objects.getId(id).maxHp+"\n"+
       "требуемый навык"+": "+getSkillName(data.objects.getId(id).type)+
       getIsJobLock();
   }
@@ -264,8 +283,8 @@ class Terminal extends WorkObject {
 class Workbench extends Terminal {
   private ComponentList components;
 
-  Workbench (int id) {
-    super(id);
+  Workbench (int id, String name, float hp) {
+    super(id, name, hp);
     components = new ComponentList(data.items);
   }
   color getColor() {
@@ -276,8 +295,7 @@ class Workbench extends Terminal {
   }
   String getDescriptTask() {
     Database.DataObject product = data.getItem(mainList.select.id);
-    return "операции: "+count_operation+"\n"
-      +"изделия: "+count_operation*data.getItem(mainList.select.id).count_operation+" шт.\n"
+    return "количество: "+count_operation+"\n"
       +"трудоёмкость: "+count_operation*(product.scope_of_operation+product.reciept.getScopeTotal())+"\n";
   }
   String getProductDescript() {
@@ -305,6 +323,8 @@ class Workbench extends Terminal {
   }
   boolean isAllowCreate() {
     if (product!=-1) {
+      if (progress>0)
+        return true;
       for (int part : data.getItem(product).reciept.sortItem()) {
         if (components.calculationItem(part)<data.getItem(product).reciept.calculationItem(part)*count_operation) 
           return false;
@@ -326,17 +346,14 @@ class Workbench extends Terminal {
 }
 
 class DevelopBench extends Terminal {
-  DevelopBench (int id) {
-    super(id);
+  DevelopBench (int id, String name, float hp) {
+    super(id, name, hp);
   }
   color getColor() {
     return gray;
   }
-  boolean getNewProduct() {
-    return true;
-  }
   int getMaxProgress() {
-    return data.getItem(product).reciept.getScopeTotal();
+    return constrain(data.getItem(product).reciept.getScopeTotal(), 5, 10000);
   }
   String getDescriptTask() {
     String difficultyText="";
@@ -354,13 +371,15 @@ class DevelopBench extends Terminal {
 }
 
 class Container extends WorkObject {
-  int capacity;
+  int capacity, weightMax, weightMin;
   ComponentList items;
 
-  Container (int id) {
-    super(id);
+  Container (int id, String name, int capacity, int weightMin, int weightMax) {
+    super(id, name);
     items = new ComponentList(data.items);
-    capacity = 400;
+    this.capacity = capacity;
+    this.weightMax=weightMax;
+    this.weightMin=weightMin;
   }
   public String getDescript() {
     return name+"\n"+
@@ -384,10 +403,10 @@ class Container extends WorkObject {
     else
       return false;
   }
-  public int getFreeCapacity() {
+  int getFreeCapacity() {
     return capacity-getCapacity();
   }
-  public void drawIndicator(boolean status) {
+  void drawIndicator(boolean status) {
     if (status)
       fill(green);
     else
@@ -458,7 +477,7 @@ class WorkObjectList extends ArrayList <WorkObject> {
     for (WorkObject object : this) {
       if (object instanceof Terminal) {
         int [] place = world.getPlace(object.getX(), object.getY(), object.direction);
-        if (place[0]>=0 && place[1]>=0) {
+        if (place[0]>=0 && place[1]>=0 && place[0]<world.room.sizeX && place[1]<world.room.sizeY) {
           if (getPathTo(world.room.node[worker.x][worker.y], world.room.node[place[0]][place[1]])!=null) 
             objects.add(object);
         }
@@ -474,11 +493,31 @@ class WorkObjectList extends ArrayList <WorkObject> {
     }
     return objects;
   }
+    WorkObjectList getObjectsWorking() {  //возвращает объекты незаблокированные другой работой
+    WorkObjectList objects= new WorkObjectList();
+    for (WorkObject object : this) {
+      if (object instanceof Terminal) {
+        if (((Terminal)object).hp>0)
+        objects.add(object);
+      }
+    }
+    return objects;
+  }
   WorkObjectList getObjectsAllowJob() {  //возвращает объекты незаблокированные другой работой
     WorkObjectList objects= new WorkObjectList();
     for (WorkObject object : this) {
       if (object.job==null)
         objects.add(object);
+    }
+    return objects;
+  }
+  WorkObjectList getObjectsAllowWeight(int weight) {  //возвращает объекты которые может перенести
+    WorkObjectList objects= new WorkObjectList();
+    for (WorkObject object : this) {
+      if (object instanceof ItemMap) {
+        if (data.getItem(((ItemMap)object).item).weight<=weight)  
+          objects.add(object);
+      }
     }
     return objects;
   }
@@ -496,7 +535,7 @@ class WorkObjectList extends ArrayList <WorkObject> {
     WorkObjectList objects = new WorkObjectList();
     for (WorkObject object : this) {
       if (object instanceof Terminal) {
-        if (((Terminal)object).hp<((Terminal)object).hp_max)
+        if (((Terminal)object).hp< data.objects.getId(object.id).maxHp)
           objects.add(object);
       }
     }

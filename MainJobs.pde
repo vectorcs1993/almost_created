@@ -15,8 +15,7 @@ abstract class Job {   //главный класс работы
   abstract String getStatus();
   int getProcess() {
     return 0;
-  }
-  
+  }  
   int getProcessMax() {
     return 0;
   }

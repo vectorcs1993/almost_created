@@ -1,75 +1,80 @@
 class Order {
-  int id, count, day, product;
-  float exp;
-  String label;
+  int id, day, count, product;
+  float exp, refund;
   float cost;
-  Date date;
+  Date deadLine, allowDate, newOrder;
 
-  Order (int id, int product, int count, float cost, int day, float exp) {
+  Order (int id, int product, int count, float cost, int day, Date deadLine, Date dayAllow, float exp) {
     this.product=product;
     this.count=count;
     this.cost=cost;
     this.id = id;
-    this.day=day;
     this.exp=exp;
-    this.date = getDateForDays(day);
-    label="заказ №"+id+": "+data.getItem(product).name+" ("+count+")";
+    this.day=day;
+    this.deadLine = deadLine;
+    this.allowDate = dayAllow;
+    refund = 0;
+    newOrder=null;
   }
-  String getDescript() {
+  String getDescriptNew() {
+    return "награда: "+cost+" $\n"+
+      "опыт: "+exp+"\n"+
+      "=================="+"\n"+
+      "количество: "+world.room.getItemsIsContainers(Database.ALL).calculationItem(product)+"/"+count+"\n"+
+      "доступен до: "+allowDate.getDateNotTime()+"\n"+
+      "дней на выполнение: "+day+"\n"+
+      "сложность: "+str((data.getItem(product).scope_of_operation+data.getItem(product).reciept.getScopeTotal()))+"\n"+
+      "трудоемкость: "+str(count*(data.getItem(product).scope_of_operation+data.getItem(product).reciept.getScopeTotal()))+"\n";
+  }
+  String getDescriptOpen() {
     return "награда: "+cost+" $\n"+
       "опыт: "+exp+"\n"+
       "количество: "+world.room.getItemsIsContainers(Database.ALL).calculationItem(product)+"/"+count+"\n"+
-      "срок: "+date.getDateNotTime()+" ("+day+" дня/дней)"+"\n"+
-      "сложность: "+str((data.getItem(product).scope_of_operation+data.getItem(product).reciept.getScopeTotal()))+"\n"+
-      "трудоемкость: "+str(count*(data.getItem(product).scope_of_operation+data.getItem(product).reciept.getScopeTotal()))+"\n";
+      "срок до: "+deadLine.getDateNotTime()+"\n";
+  }
+  String getDescriptClose() {
+    return "награда: "+cost+" $\n"+
+      "опыт: "+exp;
+  }
+  String getDescriptFail() {
+    return "штраф: "+refund+" $";
   }
   public boolean isComplete() {
     return  world.room.getItemsIsContainers(Database.ALL).calculationItem(product)>=count;
   }
-  public boolean isFail(Date date) {
-    if ((this.date.month==date.month && this.date.day>date.day) || this.date.month>date.month || this.date.year>date.year)
+  boolean isFail(Date date) {
+    if ((deadLine.month==date.month && deadLine.day>date.day) || deadLine.month>date.month || deadLine.year>date.year)
       return false;
     else 
     return true;
   }
-  public Date getDateForDays(int days) {
-    int month =world.date.month;
-    int year=world.date.year;
-    int day =world.date.day;
-    int tMonth=ceil(days/30);
-    if (tMonth>0) {
-      int lastDay=days-(tMonth*30);
-      day+=lastDay;
-      if (month+tMonth>12) {
-        year+=1;
-        month=month+tMonth-12;
-      } else 
-      month+=tMonth;
-    } else 
-    day+=days;
-    return new Date (day, month, year);
+  boolean isNotAllow(Date date) {
+    if ((allowDate.month==date.month && allowDate.day>date.day) || allowDate.month>date.month || allowDate.year>date.year)
+      return false;
+    else 
+    return true;
   }
-  public void update() {
+  void update() {
     cost=getDecimalFormat(cost);
     int scope = 1+ data.getItem(product).scope_of_operation+data.getItem(product).reciept.getScopeTotal();
-    if (world.company.getLevel()<=scope/data.getItem(product).scope_of_operation)
+    if (company.getLevel()<=scope/data.getItem(product).scope_of_operation)
       exp = scope*count;
     else 
-    exp = (scope/world.company.getLevel())*count;
+    exp = (scope/company.getLevel())*count;
   }
 }
 
 class OrderList extends ArrayList <Order> {
 
 
-  public Order getOrder(int id) {      //возвращает экземпляр объекта по id
+  Order getOrder(int id) {      //возвращает экземпляр объекта по id
     for (Order part : this) {
       if (part.id==id) 
         return part;
     }
     return null;
   }
-  public OrderList getFailOrders(Date date) {
+  OrderList getFailOrders(Date date) {
     OrderList failed = new OrderList();
     for (Order order : this) {
       if (order.isFail(date))
@@ -77,16 +82,16 @@ class OrderList extends ArrayList <Order> {
     }
     return failed;
   }
-  public String getLabels() {  // возвращает список заказов
+  String getLabels() {  // возвращает список заказов
     if (this.size()==0)
       return "пусто";
     else {
       String names="";
       int i=0;
       for (Order order : this) {
-        names+=order.label;
+        names+="заказ №"+order.id+": "+data.getItem(order.product).name+" ("+order.count+")";
         if (i!=this.size()-1)
-          names+=", ";
+          names+="\n";
         else
           names+=";";
         i++;
@@ -94,12 +99,26 @@ class OrderList extends ArrayList <Order> {
       return names;
     }
   }
-  public int getLastId() {
+  int getLastId() {
     if (this.isEmpty())
       return 1;
     IntList s = new IntList();
     for (Order part : this) 
       s.append(part.id);
     return s.max()+1;
+  }
+  int getCountTimersEnd() {  //возвращает количество заказов из списка, у которых закончился тайминг
+    int count =0;
+    for (Order order : this) {
+      if (order.newOrder!=null) {
+        if (order.newOrder.isPassed(world.date))      
+          count++;
+        else {
+          order.newOrder=null;
+          printConsole("доступен новый заказ");
+        }
+      }
+    }
+    return count;
   }
 }

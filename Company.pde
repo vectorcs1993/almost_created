@@ -1,31 +1,36 @@
+Company company;
+
+
 class Company {
   String name;
-  private float money;
+  float money;
   OrderList opened, closed, failed;
-  int buildingLimited, ordersLimited, ordersOpenLimited, exp;
-  boolean gameOver;
+  int buildingLimited, ordersOpenLimited, exp;
   WorkerList workers;
   ProfessionList professions;
 
-  Company (String name) {
+  Company (String name, int exp, float money) {
     this.name=name;
-    gameOver=false;
-    money=10000;
+    this.money=money;
     opened=new OrderList();
     closed=new OrderList();
     failed=new OrderList();
     buildingLimited = 15;
-    ordersLimited = 6;
     ordersOpenLimited=3;
-    exp = 0;
-
+    this.exp = exp;
     professions = new ProfessionList();
-
     professions.addNewProfession("разнорабочий");
     workers = new WorkerList();
-    addWorker("Виктор Функ", 6);
-    addWorker("Михаил Ларичев", 6);
-   addWorker("Аким Мульцин", 6);
+  }
+  int getOrdersLimited() {
+    return 5+getLevel();
+  }
+  void dispose() {
+    opened.clear(); 
+    closed.clear(); 
+    failed.clear();
+    workers.clear();
+    professions.clear();
   }
   public String getInfo() {
     return "наименование: "+name+"\n"+
@@ -33,17 +38,20 @@ class Company {
       "опыт компании"+": "+exp+"\n"+
       "бюджет"+": "+money+" $\n"+
       "лимит построек"+": "+buildingLimited+"\n"+
-      "лимит новых заказов"+": "+ordersLimited+"\n"+
+      "лимит новых заказов"+": "+getOrdersLimited()+"\n"+
       "лимит открытых заказов"+": "+ordersOpenLimited+"\n"+
       "работников: "+workers.size() +"\n";
   }
   public void update() {
     for (Worker worker : workers) {
-      if (worker.job==null) {
+
+      worker.updatePayday();
+
+      if (worker.job==null) { //поиск работы
         if (worker.profession!=null) {
           if (worker.profession.jobs.hasValue(Job.SUPPLY)) { 
             //работа по выполнению закупки сырья
-            WorkObject terminalPurchase = world.room.getAllObjects().getTerminals().getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
+            WorkObject terminalPurchase = world.room.getAllObjects().getTerminals().getObjectsWorking().getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
             if (terminalPurchase!=null) {    
               worker.job = new JobInTerminal(worker, (Terminal)terminalPurchase, JobInTerminal.SUPPLY);
               continue;
@@ -51,7 +59,7 @@ class Company {
           }
           if (worker.profession.jobs.hasValue(Job.DEVELOP)) { 
             //работа по разработке новых изделий
-            WorkObject productDevelop = world.room.getAllObjects().getDevelopBenches().getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
+            WorkObject productDevelop = world.room.getAllObjects().getDevelopBenches().getObjectsWorking().getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
             if (productDevelop!=null) {
               worker.job = new JobInTerminal(worker, (DevelopBench)productDevelop, JobInTerminal.DEVELOP);
               continue;
@@ -59,7 +67,7 @@ class Company {
           }
           if (worker.profession.jobs.hasValue(Job.CREATE)) { 
             //работа по созданию изделий
-            WorkObject productBench = world.room.getAllObjects().getWorkBenches(Job.CREATE).getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
+            WorkObject productBench = world.room.getAllObjects().getWorkBenches(Job.CREATE).getObjectsWorking().getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
             if (productBench !=null) {
               Workbench bench = (Workbench)productBench;
               if (bench.isAllowCreate()) {
@@ -70,75 +78,12 @@ class Company {
           }
           if (worker.profession.jobs.hasValue(Job.ASSEMBLY)) { 
             //работа по сборке изделий
-            WorkObject productBench = world.room.getAllObjects().getWorkBenches(Job.ASSEMBLY).getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
+            WorkObject productBench = world.room.getAllObjects().getWorkBenches(Job.ASSEMBLY).getObjectsWorking().getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowProducts().getNearestObject(worker.x, worker.y); //ищет терминалы в комнате
             if (productBench !=null) {
               Workbench bench = (Workbench)productBench;
               if (bench.isAllowCreate()) {
                 worker.job = new JobInTerminal(worker, bench, JobInTerminal.ASSEMBLY);
                 continue;
-              }
-            }
-          }  
-          if (worker.profession.jobs.hasValue(Job.CARRY)) { 
-            //работа по переноске предметов в объект производства
-            WorkObjectList objectsBenches = world.room.getAllObjects().getWorkBenches().getObjectsAllowJob().getObjectsAllowMove(worker);
-            for (WorkObject object : objectsBenches) {
-              Workbench workbench = (Workbench)object;
-              if (workbench.product!=-1) {
-                //предметов на карте в объект производства
-                int needId=world.room.getShearchInItemMap(workbench.getNeedItems());
-                if (needId!=-1) {
-                  int needItemCount = workbench.getNeedItemCount(needId);
-                  WorkObject objectCarryComponent=null;
-                  WorkObjectList itemsFree = world.room.getAllObjects().getItems().getObjectsAllowJob().getObjectsAllowMove(worker).getItemsById(needId);
-                  if (!itemsFree.isEmpty()) 
-                    objectCarryComponent=itemsFree.getNearestObject(worker.x, worker.y);
-                  if (objectCarryComponent!=null) {
-                    if (data.getItem(((ItemMap)objectCarryComponent).item).weight<=worker.capacity) {
-                      worker.job = new JobCarryItemMapForBench(worker, (ItemMap)objectCarryComponent, needItemCount, workbench);                
-                      continue;
-                    }
-                  }
-                }
-                if (worker.job!=null)
-                  break;
-                //предметов из контейнеров в объект производства
-                int itemCarry=-1;
-                WorkObject containerIsItemFree=null; 
-                needId = world.room.getShearchInItem(workbench.getNeedItems());
-                if (needId!=-1) {
-                  int needItemCount = workbench.getNeedItemCount(needId);
-                  WorkObjectList storageIsItem = world.room.getAllObjects().getIsItem(needId); 
-                  if (!storageIsItem.isEmpty()) { 
-                    containerIsItemFree=(Container)storageIsItem.getNearestObject(worker.x, worker.y);
-                    itemCarry=((Container)containerIsItemFree).items.getComponent(needId);
-                  }
-                  if (containerIsItemFree!=null && itemCarry!=-1) {  
-                    if (data.getItem(itemCarry).weight<=worker.capacity) {
-                      worker.job = new JobCarryItemForBench(worker, itemCarry, needItemCount, (Container)containerIsItemFree, workbench);                
-                      continue;
-                    }
-                  }
-                }
-              }
-            }
-            if (worker.job!=null)
-              continue;
-            //работа по перемещению предмета с карты в контейнер
-            ItemMap itemMap=null;  //инициализирует предмет на карте
-            WorkObjectList itemsMap = world.room.getAllObjects().getItems().getObjectsAllowJob().getObjectsAllowMove(worker); //ищет предмет в комнате
-            if (!itemsMap.isEmpty()) { 
-              itemMap=(ItemMap)itemsMap.getNearestObject(worker.x, worker.y);
-              Container container=null;
-              WorkObjectList containers = world.room.getAllObjects().getContainers().getContainersFreeCapacity().getObjectsAllowJob().getObjectsAllowMove(worker);  //ищет контейнер
-              if (!containers.isEmpty()) {
-                container = (Container)containers.getNearestObject(worker.x, worker.y);
-                if (container!= null) {
-                  if (data.getItem(itemMap.item).weight<=worker.capacity) {
-                    worker.job = new JobCarryItemMap(worker, itemMap, container);
-                    continue;
-                  }
-                }
               }
             }
           }
@@ -150,26 +95,84 @@ class Company {
               continue;
             }
           }
+          if (worker.profession.jobs.hasValue(Job.CARRY)) { 
+            //работа по переноске предметов в объект производства
+            WorkObjectList objectsBenches = world.room.getAllObjects().getWorkBenches().getObjectsWorking().getObjectsAllowJob().getObjectsAllowMove(worker); 
+            if (!objectsBenches.isEmpty()) {
+              for (WorkObject object : objectsBenches) {
+                Workbench workbench = (Workbench)object;
+                if (workbench.product!=-1) {
+                  //предметов на карте в объект производства
+                  int needId=world.room.getShearchInItemMap(workbench.getNeedItems());
+                  if (needId!=-1) {
+                    int needItemCount = workbench.getNeedItemCount(needId);
+                    WorkObject objectCarryComponent=null;
+                    WorkObjectList itemsFree = world.room.getAllObjects().getItems().
+                      getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowWeight(worker.capacity).getItemsById(needId);
+                    if (!itemsFree.isEmpty()) 
+                      objectCarryComponent=itemsFree.getNearestObject(worker.x, worker.y);
+                    if (objectCarryComponent!=null) {
+                      worker.job = new JobCarryItemMapForBench(worker, (ItemMap)objectCarryComponent, needItemCount, workbench);                
+                      break;  //покидает цикл перебора объектов производства
+                    }
+                  }
+                  //предметов из контейнеров в объект производства
+                  int itemCarry=-1;
+                  WorkObject containerIsItemFree=null; 
+                  needId = world.room.getShearchInItem(workbench.getNeedItems());
+                  if (needId!=-1) {
+                    int needItemCount = workbench.getNeedItemCount(needId);
+                    WorkObjectList storageIsItem = world.room.getAllObjects().getIsItem(needId); 
+                    if (!storageIsItem.isEmpty()) { 
+                      containerIsItemFree=(Container)storageIsItem.getNearestObject(worker.x, worker.y);
+                      itemCarry=((Container)containerIsItemFree).items.getComponent(needId);
+                    }
+                    if (containerIsItemFree!=null && itemCarry!=-1) {  
+                      if (data.getItem(itemCarry).weight<=worker.capacity) {
+                        worker.job = new JobCarryItemForBench(worker, itemCarry, needItemCount, (Container)containerIsItemFree, workbench);                
+                        break;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            if (worker.job!=null)
+              continue;
+            //работа по перемещению предмета с карты в контейнер
+            ItemMap itemMap=null;  //инициализирует предмет на карте
+            WorkObjectList itemsMap = world.room.getAllObjects().getItems().
+              getObjectsAllowJob().getObjectsAllowMove(worker).getObjectsAllowWeight(worker.capacity); //ищет предмет в комнате
+            if (!itemsMap.isEmpty()) { 
+              itemMap=(ItemMap)itemsMap.getNearestObject(worker.x, worker.y);
+              Container container=null;
+              WorkObjectList containers = world.room.getAllObjects().getContainers().getContainersFreeCapacity().getObjectsAllowJob().getObjectsAllowMove(worker);  //ищет контейнер    
+              if (!containers.isEmpty()) {
+                container = (Container)containers.getNearestObject(worker.x, worker.y);
+                if (container!= null) {
+                  worker.job = new JobCarryItemMap(worker, itemMap, container);
+                  continue;
+                }
+              }
+            }
+          }
           int x = int(random(world.room.sizeX));
           int y = int(random(world.room.sizeY));
-         if (getPathTo(world.room.node[worker.x][worker.y], world.room.node[x][y])!=null) 
-           worker.job= new JobMove (worker, world.room.node[x][y]);
+          if (getPathTo(world.room.node[worker.x][worker.y], world.room.node[x][y])!=null) 
+            worker.job= new JobMove (worker, world.room.node[x][y]);
         }
       } else {
-         //если работа есть
+        //если работа есть
       }
     }
     money=getDecimalFormat(money);
-    if (money<=0) 
-      gameOver=true;
-    if (gameOver) {
+    if (money<=0) {
       dialog.showWarningDialog("Игра проиграна ", "Сообщение");
       exit();
     }
   }
-  public void addWorker(String name, int capacity) {
-    Worker worker = new Worker(workers.getLastWorkerId(), name, capacity);
-    worker.profession=professions.get(0);
+  void addWorker(String name, int capacity) {
+    Worker worker = new Worker(0, 0, workers.getLastId(), name, capacity, professions.get(0));
     workers.add(worker);
   }
   void setExpenses() {

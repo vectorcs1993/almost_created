@@ -2,13 +2,11 @@ class WorkLabel extends ScaleActiveObject {
   int item;
   int count;
   color colorBack;
-  boolean newProduct;
-  WorkLabel(float x, float y, float ww, float hh, int item, int count, boolean newProduct, color colorBack) {
+  WorkLabel(float x, float y, float ww, float hh, int item, int count, color colorBack) {
     super(x, y, ww, hh);
     this.item=item;
     this.count=count;
     this.colorBack=colorBack;
-    this.newProduct=newProduct;
   }
   void draw () {
     pushMatrix();
@@ -19,7 +17,7 @@ class WorkLabel extends ScaleActiveObject {
     stroke(white);
     rect(0, 0, width, height);
     image(data.getItem(item).sprite, 0, 0);
-    if (count>1 && !newProduct)
+    if (count>1)
       drawCount(count);
     popStyle();
     popMatrix();
@@ -41,16 +39,10 @@ class WorkLabel extends ScaleActiveObject {
     popMatrix();
   }
   public void mousePressed() {
-    if (newProduct) {
-      data.objects.getId(data.getItem(item).work_object).products.append(item);
-      Terminal terminal = world.room.getObjectAtLabel(this);
+    Terminal terminal = world.room.getObjectAtLabel(this);
+    int [] place = world.room.getAbsCoordObject(terminal);
+    count = world.room.addItem(place[0], place[1], item, count);
+    if (count<=0)
       terminal.removeLabel();
-    } else {
-      Terminal terminal = world.room.getObjectAtLabel(this);
-      int [] place = world.room.getAbsCoordObject(terminal);
-      count = world.room.addItem(place[0], place[1], item, count);
-      if (count<=0)
-        terminal.removeLabel();
-    }
   }
 }

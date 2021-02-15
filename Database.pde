@@ -5,7 +5,7 @@ PApplet context = this;
 
 class Database {
   public final  DatabaseObjectList items = new  DatabaseObjectList(), objects = new  DatabaseObjectList();
-  StringDict label = new StringDict(), helpMessages = new StringDict(); 
+  StringDict label = new StringDict(); 
   SQLite db;
   static final int ALL=0, PRODUCTS=1, RESHEARCHED=2;
   Database () {
@@ -15,14 +15,6 @@ class Database {
       for (java.lang.Object s : part.keys()) {
         String keyIndex = s.toString();
         label.set(keyIndex, part.getString(keyIndex));
-      }
-    }
-    strings= loadJSONArray("data/languages/help_ru.json");      
-    for (int i = 0; i < strings.size(); i++) {
-      JSONObject part = strings.getJSONObject(i);
-      for (java.lang.Object s : part.keys()) {
-        String keyIndex = s.toString();
-        helpMessages.set(keyIndex, part.getString(keyIndex));
       }
     }
     db = new SQLite(context, "data/objects.db" );  //открывает файл базы данных
@@ -115,23 +107,23 @@ class Database {
     protected final PImage sprite;
     protected final String name;
     protected ComponentList reciept, products;
-    int scope_of_operation, count_operation, weight, pool, maxPool, work_object, type;
+    int scope_of_operation, weight, pool, maxPool, work_object, type, maxHp;
     protected float cost;
     DataObject(int id, String name, PImage sprite) {
       this.id=id;
       this.name=name;
       this.sprite=sprite;
-      count_operation=weight=1;
+      weight=1;
       scope_of_operation=10;
       cost=type=0;
       reciept=null;
       products=new ComponentList(items);
       work_object=-1;
+      maxHp=100;
     }
     float getCostForPool() {
       return cost*maxPool/pool;
     }
-
     public void draw() {
       image(sprite, world.getAbsCoordX()*world.size_grid, world.getAbsCoordY()*world.size_grid);
     }
@@ -149,23 +141,25 @@ class Database {
   WorkObject getNewObject(Database.DataObject obj) {
     switch(obj.id) {
     case WorkObject.CONTAINER: 
-      return new Container(obj.id);
+      return new Container(obj.id,  data.objects.getId(obj.id).name, 400, 1, 20);
+       case WorkObject.GARAGE: 
+      return new Container(obj.id,  data.objects.getId(obj.id).name, 600, 20, 100);
     case WorkObject.TERMINAL: 
-      return new Terminal(obj.id); 
+      return new Terminal(obj.id, data.objects.getId(obj.id).name, obj.maxHp); 
     case WorkObject.WORKBENCH: 
-      return new Workbench(obj.id); 
+      return new Workbench(obj.id, data.objects.getId(obj.id).name, obj.maxHp); 
     case WorkObject.DEVELOPBENCH: 
-      return new DevelopBench(obj.id);
+      return new DevelopBench(obj.id, data.objects.getId(obj.id).name, obj.maxHp);
     case WorkObject.FOUNDDRY: 
-      return new Workbench(obj.id);
+      return new Workbench(obj.id, data.objects.getId(obj.id).name, obj.maxHp);
     case WorkObject.SAW_MACHINE: 
-      return new Workbench(obj.id);
+      return new Workbench(obj.id, data.objects.getId(obj.id).name, obj.maxHp);
     case WorkObject.WORKSHOP_MECHANICAL: 
-      return new Workbench(obj.id);
+      return new Workbench(obj.id, data.objects.getId(obj.id).name, obj.maxHp);
     case WorkObject.EXTRUDER: 
-      return new Workbench(obj.id);
+      return new Workbench(obj.id, data.objects.getId(obj.id).name, obj.maxHp);
     case WorkObject.WORKAREA: 
-      return new Workbench(obj.id);
+      return new Workbench(obj.id, data.objects.getId(obj.id).name, obj.maxHp);
     }
     return null;
   }
@@ -184,6 +178,7 @@ class Database {
             obj.products.append(1);
             obj.products.append(2);
             obj.products.append(7);
+             obj.products.append(8);
             obj.products.append(10);
           }
         } else if (table.equals("items")) {
@@ -195,7 +190,6 @@ class Database {
             object.work_object=db.getInt("work_object");
 
           if (db.getString("reciept")!=null) {  //заполнение рецепта
-            object.count_operation=db.getInt("count_operation"); //определяет количество предмета изготовленного за 1 операцию
             object.reciept = new ComponentList(items);
             JSONArray parse = parseJSONArray(db.getString("reciept"));
             for (int i = 0; i < parse.size(); i++) {
@@ -209,7 +203,7 @@ class Database {
         }
 
         if (object!=null) {  //если объект базы данных создался
-          object.cost=db.getFloat("cost"); //определяет стоимость
+          object.cost=db.getFloat("cost"); //определяет коэффициент стоимости
           list.add(object);
         }
       }

@@ -46,7 +46,8 @@
 
 	
 
-	"container":"контейнер", 
+	"container":"контейнер",
+	"garage":"гараж", 
 	"terminal":"терминал доставки",
 	"foundry":"печь",
 	"workbench":"стол сборочный",
@@ -60,25 +61,23 @@
  
   	"steel":"руда железная",
 	"copper":"руда медная",
-	"quartz":"песок кварцевый",
+	"quartz":"кварц",
 	"plate_steel":"пластина сталь",
 	"plate_copper":"пластина медная",
+	"textus":"текстолит",
 	"rubber":"каучук",
+	"silicon":"кремний",
 	"block_steel":"блок сталь",
 	"plastic":"пластмасса",
 	"axis_copper":"пруток медь",
 	"axis_steel":"пруток сталь",
 	"kit_repair":"комплект ремонтный",
 	"wrench":"ключ гаечный",
-	"box_plastic":"ящик пластмасса",
 	"car":"автомобиль",
 	"car_body":"кузов",
-	"car_door_front_l":"дверь пер. лев.",
-	"car_door_case_front_l":"каркас двери пер. лев.",
-	"car_door_grass_front_l":"стекло боковое пер. лев.",
-	"car_door_front_r":"дверь пер. прав.",
-	"car_door_case_front_r":"каркас двери пер. прав.",
-	"car_door_grass_front_r":"стекло боковое пер. прав.",
+	"car_door_front":"дверь передняя",
+	"car_door_case_front":"каркас двери передей",
+	"car_door_grass_front":"стекло боковое переднее",
 	"car_door_handle":"ручка дверная",
 	"engine":"двигатель",
 	"wheel":"колесо",
@@ -98,6 +97,9 @@
 	"engine_valve":"клапан",
 	"engine_spark_plug":"свеча зажигания",
 	"engine_impeller":"крыльчатка",
+	"wire":"провод",
+	"board_pcb":"плата печатная",
+	"component_pcb":"компонент электронный",
 
 
 

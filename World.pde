@@ -3,7 +3,6 @@
 class World extends ScaleActiveObject {
   Room room;
   float size_grid;
-  Company company;
   Database.DataObject newObj;
   OrderList orders;
   boolean pause, input;
@@ -11,17 +10,16 @@ class World extends ScaleActiveObject {
   Date date;
   int speed, minSpeed, maxSpeed, stepSpeed;
 
-  World (float xx, float yy, float ww, float hh) {
-    super(xx, yy, ww, hh);
-    room = new Room(int(ww/32), int(hh/32));
+  World (Date date, int speed) {
+    super(1, 32, 512, 384);
+    room = new Room(int(512/32), int(384/32));
     size_grid=32;
-    speed=300;
-    minSpeed=0;
-    maxSpeed=300;
+    this.speed=speed;
+    minSpeed=50;
+    maxSpeed=350;
     stepSpeed=100;
-    company=new Company ("Robocraft");
     orders = new OrderList();
-    date = new Date (1, 5, 2019);
+    this.date = date;
     input=true;
     level=0;
     int n=0;
@@ -33,40 +31,31 @@ class World extends ScaleActiveObject {
       }
     }
   }
-  public int getAbsCoordX() {
+  void dispose() {
+    room.dispose();
+    room=null;
+    newObj=null;
+    orders.clear();
+    date=null;
+  }
+
+  int getAbsCoordX() {
     return constrain(ceil((float(mouseX)-this.x*getScaleX())/(size_grid*getScaleX()))-1, 0, int(width/size_grid)-1);
   }
-  public int getAbsCoordY() {
+  int getAbsCoordY() {
     return constrain(ceil((float(mouseY)-this.y*getScaleY())/(size_grid*getScaleY()))-1, 0, int(height/size_grid)-1);
   }
   public void update() {
-    company.update();
     if (!pause) {
       room.update();
       for (Timer part : timers)   //отсчет таймеров
         part.tick();
       date.tick();
-
-
-
-      //добавление новых заказов
-      if ((orders.isEmpty() || orders.size()<company.ordersLimited)) {
-        int item = data.items.getRandom(Database.RESHEARCHED).id; //определяет изделие
-        int scope_one =data.getItem(item).scope_of_operation+data.getItem(item).reciept.getScopeTotal();
-        int count = 1+int(random(1000*world.company.getLevel())/scope_one); //определяет количество  
-        int scope_total = count*scope_one;
-        int deadLine = 2+int(date.getDays(scope_total));//определяет срок на изготовление 2 дня - минималка
-        float cost_one = data.getItem(item).cost*data.getItem(item).reciept.getCostTotal();  //определяет стоимость предмета 
-        float cost = count*cost_one;  //определяет общую стоимость объектов 
-        float exp=scope_one/world.company.getLevel();  
-        if (cost<=1000*world.company.getLevel())
-          orders.add(new Order(orders.getLastId(), item, count, cost, deadLine, exp));
-      }
       boolean newOrders=false;
       for (int i=orders.size()-1; i>=0; i--) {
         Order order = orders.get(i);
         order.update();
-        if (order.isFail(date)) {
+        if (order.isNotAllow(date)) {
           orders.remove(order);
           order = null;
           newOrders=true;
@@ -77,22 +66,48 @@ class World extends ScaleActiveObject {
       OrderList failed = company.opened.getFailOrders(date);
       if (!failed.isEmpty()) {
         String ordersNames ="\n"+failed.getLabels();
-        float cost=0;
+        float refund=0, cost=0;
         for (Order order : failed) {
+          float ref = order.cost*0.5;
           company.opened.remove(order);
+          order.refund=ref;
+          refund+=ref;
           cost+=order.cost;
           company.failed.add(order);
         }
-        cost = getDecimalFormat(cost);
-        float forfeit = getDecimalFormat(cost*0.2);
+        float forfeit = getDecimalFormat(refund);
         company.money-=forfeit;
-        dialog.showInfoDialog("следующие заказы просрочились: "+ordersNames+" на сумму: "+cost+" $, штраф: "+forfeit+" $");
-        printConsole("просроченные заказы: "+ordersNames+" на сумму: "+cost+" $, штраф: "+forfeit+" $");
+        dialog.showInfoDialog("следующие заказы просрочились: "+ordersNames+" на сумму: "+getDecimalFormat(cost)+" $, штраф: "+forfeit+" $");
+        printConsole("просроченные заказы: "+ordersNames+" на сумму: "+getDecimalFormat(cost)+" $, штраф: "+forfeit+" $");
         printConsole("[РАСХОД] штраф: "+forfeit+" $");
       }
+
+      //добавление новых заказов
+      int newCountOrders = company.getOrdersLimited()-company.opened.getCountTimersEnd();
+      if (orders.size()<newCountOrders) 
+        addRandomOrder();
     }
   }
-  public void draw() {
+  void addRandomOrder() {
+    int item = data.items.getRandom(Database.RESHEARCHED).id; //определяет изделие
+    int scope_one =data.getItem(item).scope_of_operation+data.getItem(item).reciept.getScopeTotal();
+    int count = 1+int(random(1000*company.getLevel())/scope_one); //определяет количество  
+    int scope_total = count*scope_one;
+    int day = constrain((date.getDays(scope_total)), 2, 10);//определяет срок на изготовление 2 дня - минималка
+    float cost_one = data.getItem(item).cost*data.getItem(item).reciept.getCostTotal();  //определяет стоимость предмета 
+    float cost = count*cost_one;  //определяет общую стоимость объектов 
+    float exp=scope_one/company.getLevel(); 
+    IntList lastId = new IntList();
+    lastId.append(orders.getLastId());
+    lastId.append(company.opened.getLastId());
+    lastId.append(company.closed.getLastId());
+    lastId.append(company.failed.getLastId());
+    if (cost<=1000*company.getLevel())
+      orders.add(new Order(lastId.max(), item, count, cost, day, getDateForDays(day), getDateForDays(constrain(int(day/2), 1, day)), exp));
+    lastId.clear();
+    lastId=null;
+  }
+  void draw() {
     if (room!=null) {
       pushMatrix();
       translate(x*getScaleX(), y*getScaleY());
@@ -152,42 +167,51 @@ class World extends ScaleActiveObject {
   void selectCurrentObject() {
     if (room!=null) {
       WorkObject object = getObject();
-      if (object!=null) 
+      if (object!=null) {
+        menuTasker.resetSelect();
+        menuContainer.resetSelect(); 
+        menuBench.resetSelect(); 
+        menuWorker.resetSelect();
         room.currentObject=object;
-      else
+      } else
         room.currentObject=null;
     }
   }
   public void mousePressed() {
     if (input) {
-      if (!room.isHoverLabel()) {
-        int _x=getAbsCoordX();
-        int _y=getAbsCoordY();
-        if (mouseButton==LEFT) {
-          if (menuMain.select.event.equals("showObjects")) 
-            selectCurrentObject();
-          else if (menuMain.select.event.equals("showBuildings")) {
-            if (mainList.select!=null) {
-              Database.DataObject newObj = data.objects.getId(mainList.select.id);
-              if (newObj.cost<=company.money) {
-                if (room.isPlaceBuilding(newObj, _x, _y)) {
-                  if (room.getAllObjects().getNoItemMap().size()<company.buildingLimited) {
-                    WorkObject newObject = data.getNewObject(newObj);
-                    if (newObject!=null) {
-                      company.money-=newObj.cost;
-                      printConsole("[РАСХОД] постройка объекта "+newObj.name+": "+getDecimalFormat(newObj.cost)+" $");
-                      world.room.object[_x][_y]=newObject;
-                    }
+      if (room!=null) {
+        if (!room.isHoverLabel()) {
+          int _x=getAbsCoordX();
+          int _y=getAbsCoordY();
+          if (mouseButton==LEFT) {
+            if (menuMain.select.event.equals("showObjects")) 
+              selectCurrentObject();
+            else if (menuMain.select.event.equals("showBuildings")) {
+              if (mainList.select!=null) {
+                Database.DataObject newObj = data.objects.getId(mainList.select.id);
+                if (newObj.cost<=company.money) {
+                  if (room.isPlaceBuilding(newObj, _x, _y)) {
+                    if (room.getAllObjects().getNoItemMap().size()<company.buildingLimited) {
+                      WorkObject newObject = data.getNewObject(newObj);
+                      if (newObject!=null) {
+                        company.money-=newObj.cost;
+                        printConsole("[РАСХОД] постройка объекта "+newObj.name+": "+getDecimalFormat(newObj.cost)+" $");
+                        world.room.object[_x][_y]=newObject;
+                      }
+                    } else 
+                    dialog.showInfoDialog(data.label.get("message_exceeded_the_limit_of_buildings"));
                   } else 
-                  dialog.showInfoDialog(data.label.get("message_exceeded_the_limit_of_buildings"));
+                  dialog.showInfoDialog(data.label.get("message_it_is_impossible_to_place"));
                 } else 
-                dialog.showInfoDialog(data.label.get("message_it_is_impossible_to_place"));
-              } else 
-              dialog.showInfoDialog(data.label.get("message_not_enough_funds"));
+                dialog.showInfoDialog(data.label.get("message_not_enough_funds"));
+              }
+            } else {      //сброс в режим просмотра объектов
+              menuMain.setSelect(menuMain.buttons.get(0));
+              selectCurrentObject();
             }
-          } else {      //сброс в режим просмотра объектов
-            menuMain.setSelect(menuMain.buttons.get(0));
-            selectCurrentObject();
+          } else if (mouseButton==RIGHT) {
+            if (menuMain.select.event.equals("showBuildings"))
+              menuMain.resetSelect();
           }
         }
       }
@@ -210,12 +234,12 @@ class World extends ScaleActiveObject {
           node[ix][iy]=new Graph(ix, iy);
         }
       }
-      object[3][3] = new Terminal(WorkObject.TERMINAL);
-      object[4][4] = new Workbench(WorkObject.WORKBENCH);
-      object[7][4] = new Workbench(WorkObject.FOUNDDRY);
-      object[8][4] = new Workbench(WorkObject.WORKSHOP_MECHANICAL);
-      object[5][4] = new DevelopBench(WorkObject.DEVELOPBENCH);
-      object[6][4] = new Container(0);
+
+    }
+    void dispose() {
+      object = null;
+      node = null;
+      currentObject = null;
     }
     float [] getAbsCoord(int x, int y) {
       return new float [] {x*size_grid+size_grid/2, y*size_grid+size_grid/2};
@@ -479,12 +503,14 @@ class World extends ScaleActiveObject {
           popMatrix();
         }
       }
-      for (Worker worker : company.workers) {
-        if (currentObject!=null) {
-          if (currentObject.equals(worker)) 
-            worker.drawPath();
+      if (company!=null) {
+        for (Worker worker : company.workers) {
+          if (currentObject!=null) {
+            if (currentObject.equals(worker)) 
+              worker.drawPath();
+          }
+          worker.update();
         }
-        worker.update();
       }
       if (menuMain.select.event.equals("showObjects")) {
         if (currentObject!=null) {
@@ -509,13 +535,13 @@ class World extends ScaleActiveObject {
       } else if (menuMain.select.event.equals("showMenuCompany")) {
         if (menuCompany.select.event.equals("getWorkers")) {
           if (mainList.select!=null) {
-            Worker worker = world.company.workers.getWorkerIsId(mainList.select.id);
+            Worker worker = company.workers.getWorkerIsId(mainList.select.id);
             if (worker!=null)
               worker.drawSelected();
           }
         } else if (menuCompany.select.event.equals("getProfessions")) {
           if (mainList.select!=null) {  
-            for (Worker worker : world.company.workers.getWorkers(world.company.professions.getProfessionIsName(mainList.select.label)))
+            for (Worker worker : company.workers.getWorkers(company.professions.getProfessionIsName(mainList.select.label)))
               worker.drawSelected();
           }
         }

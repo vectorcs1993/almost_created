@@ -2,33 +2,33 @@ PImage spr_worker;
 int max_skill_level=5;
 
 class Worker extends WorkObject {
-  float cost, payday;
+  float payday;
   int x, y, capacity;
   PImage sprite;
   HashMap skills_values, skills_levels;
   ComponentList items;
   Profession profession;
-
+  
   //служебные для поиска пути
   GraphList path;
   Graph target, nextNode;
   Timer update, upgrade;
 
-  Worker (int id, String name, int capacity) {
-    super(-1);
+  Worker (int x, int y, int id, String name, int capacity, Profession profession) {
+    super(-1, name);
     this.id=id;
-    this.capacity=capacity;
-    cost = 500;  
+    this.capacity=capacity; 
     payday = 10;
-    x=y=direction=0;
+    this.x=x;
+    this.y=y;
+    direction=0;
     sprite = spr_worker;
     path = new GraphList ();
     target = nextNode = null;
     update = new Timer();
     upgrade = new Timer();
     items = new ComponentList(data.items);
-    this.name = name;
-    profession = null;
+    this.profession = profession;
     skills_values = createSkillsValues();
     skills_levels = createSkillsLevels();
   }
@@ -49,19 +49,40 @@ class Worker extends WorkObject {
     stroke(green);
     strokeWeight(3);
     rect(x*world.size_grid, y*world.size_grid, world.size_grid, world.size_grid);
+    text(name, x*world.size_grid+getAdjXforPosition(x*world.size_grid, name), getAdjYforPosition(y*world.size_grid));
     popStyle();
   }
+  void updatePayday() {
+    float pay=0;
+   for (int skill : getAllSkills()) 
+      pay+=skills_levels.get(skill).hashCode()*10; 
+    payday=pay;
+  }
+  float getAdjYforPosition(float y) {
+    if (y-32-textDescent()<=0)
+      return y+96;
+    else
+      return y-48;
+  }
   String getDescriptList() {
-    return "табельный номер: "+id+"\n"
-      +"работа: "+getJobDescript()+"\n"
-      +"должность: "+getProfessionDescript()+"\n"
+    return "должность: "+getProfessionDescript()+"\n"
       +"зарплата: "+payday+" $/день"+"\n"
+      +"=================\n"
       +"грузоподъемность: "+capacity+"\n"
       +getSkills()+"\n";
   }
-
+    String getDescriptObject() {
+    return "табельный номер: "+id+"\n"
+      +"=================\n"
+      +"работа: "+getJobDescript()+"\n"
+      +"должность: "+getProfessionDescript()+"\n"
+      +"зарплата: "+payday+" $/день"+"\n"
+      +"=================\n"
+      +"грузоподъемность: "+capacity+"\n"
+      +getSkills()+"\n";
+  }
   String getDescript() {
-    return name+"\n"+getDescriptList();
+    return name+"\n"+getDescriptObject();
   }
   String getJobDescript() {
     if (job!=null)
@@ -110,7 +131,7 @@ class Worker extends WorkObject {
         else 
         job.update();
       }
-      update.set(map(timer, 0, max_skill_level, 400, 50));
+      update.set(map(timer, 0, max_skill_level, 300, 50));
     }
     draw();
     if (job!=null) {
@@ -202,7 +223,7 @@ class Worker extends WorkObject {
       int level = skills_levels.get(work).hashCode();
       if (skills_values.get(work).hashCode()>=getExpForLevel(level)) {
         skills_levels.put(work, level+1);
-        printConsole("рабочий "+name+" достиг уровня: "+str(level+1)+" в навыке "+getSkillName(work));
+        printConsole("рабочий "+name+" достиг уровня "+str(level+1)+" набрав "+skills_values.get(work).hashCode()+" опыта в навыке "+getSkillName(work));
       }
     }
   }
@@ -212,7 +233,7 @@ class Worker extends WorkObject {
   int getWorkModificator(int work) {
     if (work==Job.MOVE) { //если рабочий просто бродит то его скорость равна максимальной скорости при транспортировке
       work=Job.CARRY;
-      return skills_levels.get(Job.CARRY).hashCode();    
+      return skills_levels.get(Job.CARRY).hashCode();
     } else 
     return skills_levels.get(work).hashCode();
   }
@@ -286,7 +307,7 @@ class Worker extends WorkObject {
 }
 
 class WorkerList extends ArrayList <Worker> {
-  int getLastWorkerId() {
+  int getLastId() {
     if (this.isEmpty())
       return 1;
     IntList s = new IntList();
@@ -350,7 +371,7 @@ class WorkerList extends ArrayList <Worker> {
 
 class ProfessionList extends ArrayList <Profession> {
   void addNewProfession(String name) {
-    this.add(new Profession(name, new int [] {Job.CARRY, Job.DEVELOP, Job.CREATE, Job.ASSEMBLY, Job.SUPPLY, Job.REPAIR}));
+    this.add(new Profession(getLastId(), name, new int [] {Job.CARRY, Job.DEVELOP, Job.CREATE, Job.ASSEMBLY, Job.SUPPLY, Job.REPAIR}));
   }
 
   Profession getProfessionIsName(String name) {
@@ -360,7 +381,13 @@ class ProfessionList extends ArrayList <Profession> {
     }
     return null;
   }
-
+  Profession getId(int id) {
+    for (Profession profession : this) {
+      if (profession.id==id) 
+        return profession;
+    }
+    return null;
+  }
   void removeProfessionIsName(String name) {
     Profession profession = getProfessionIsName(name);
     if (profession!=null)
@@ -376,14 +403,24 @@ class ProfessionList extends ArrayList <Profession> {
     }
     return list;
   }
+  int getLastId() {
+    if (this.isEmpty())
+      return 0;
+    IntList s = new IntList();
+    for (Profession part : this) 
+      s.append(part.id);
+    return s.max()+1;
+  }
 }
 
 
 class Profession {
   String name;
   IntList jobs;
-  Profession (String name, int [] jobs) {
+  int id;
+  Profession (int id, String name, int [] jobs) {
     this.name = name;
+    this.id=id;
     this.jobs = new IntList();
     for (int job : jobs)
       this.jobs.append(job);
