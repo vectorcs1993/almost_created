@@ -66,17 +66,17 @@ abstract class JobProgress extends Job { //промежуточный класс
 String getSkillName(int skill) {
   String string = "неизвестно";
   if (skill==Job.CARRY)
-    string=data.label.get("job_carry");
+    string=d.label.get("job_carry");
   else if (skill==Job.DEVELOP)
-    string=data.label.get("job_develop");
+    string=d.label.get("job_develop");
   else if (skill==Job.SUPPLY)
-    string=data.label.get("job_supply");
+    string=d.label.get("job_supply");
   else if (skill==Job.REPAIR)
-    string=data.label.get("job_repair");
+    string=d.label.get("job_repair");
   else if (skill==Job.CREATE)
-    string=data.label.get("job_create");
+    string=d.label.get("job_create");
   else if (skill==Job.ASSEMBLY)
-    string=data.label.get("job_assembly");
+    string=d.label.get("job_assembly");
 
   return string;
 }

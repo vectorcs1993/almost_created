@@ -16,7 +16,7 @@ class WorkLabel extends ScaleActiveObject {
     fill(colorBack);
     stroke(white);
     rect(0, 0, width, height);
-    image(data.getItem(item).sprite, 0, 0);
+    image(d.getItem(item).sprite, 0, 0);
     if (count>1)
       drawCount(count);
     popStyle();

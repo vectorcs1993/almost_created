@@ -1,9 +1,9 @@
 class ComponentList extends IntList {
-  Database.DatabaseObjectList data;
+  //Database.DatabaseObjectList data;
 
-  ComponentList(Database.DatabaseObjectList data) {
+  ComponentList() {
     super();
-    this.data=data;
+    //this.data=data;
   }
   void setComponents(int id, int count) {
     for (int i=0; i<count; i++)
@@ -29,7 +29,7 @@ class ComponentList extends IntList {
       IntList inv = this.sortItem();
       for (int k=0; k<inv.size(); k++) {
         int i=inv.get(k);
-        names+=data.getId(i).name+" ("+this.calculationItem(i)*count+")";
+        names+=d.getName("items", i)+" ("+this.calculationItem(i)*count+")";
         if (k!=inv.size()-1)
           names+=", ";
         else
@@ -46,7 +46,7 @@ class ComponentList extends IntList {
       IntList inv = this.sortItem();
       for (int k=0; k<inv.size(); k++) {
         int i=inv.get(k);
-        names+=data.getId(i).name+" ("+this.calculationItem(i)+")";
+        names+=d.getName("items", i)+" ("+this.calculationItem(i)+")";
         if (k!=inv.size()-1)
           names+=", ";
         else
@@ -72,7 +72,7 @@ class ComponentList extends IntList {
     return total;
   }
   ComponentList getNeedItems(ComponentList items, int count) {
-    ComponentList needs = new ComponentList(data);
+    ComponentList needs = new ComponentList();
     for (int part : items.sortItem()) {  //сортировка по id
       int countNeed = items.calculationItem(part)*count;
       int countCurrent = this.calculationItem(part);
@@ -82,7 +82,7 @@ class ComponentList extends IntList {
     return needs;
   }
   ComponentList getMult(int count) { //возвращает увеличенную копию
-    ComponentList needs = new ComponentList(data);
+    ComponentList needs = new ComponentList();
     for (int part : this) {
       needs.setComponents(part, count);
     }  
@@ -91,28 +91,27 @@ class ComponentList extends IntList {
   float getCostTotal() {   //возвращает себестоимость изготовления
     float cost = 0;
     for (int part : getResources()) {
-      Database.DataObject component =  data.getId(part);
+      Database.DataObject component =  d.getItem(part);
       cost+=component.cost;
     }
     return cost;
   }
   ComponentList getResources() { //возвращает список ресурсов для изготовления изделия
-    ComponentList resources = new ComponentList(data);
+    ComponentList resources = new ComponentList();
     ArrayList <IntList> reciepts = new ArrayList <IntList>();
     reciepts.add(this);
     while (true) {
       if (reciepts.isEmpty())
         break;
       for (int part : reciepts.get(0)) {
-        Database.DataObject component =  data.getId(part);
-        if (component.reciept!=null) 
-          reciepts.add(component.reciept);
+        if (d.getReciept(part)!=null) 
+          reciepts.add(d.getReciept(part));
         else
           resources.append(part);
       }
       reciepts.remove(0);
     }
-    return (ComponentList)resources;
+    return resources;
   }
   int getScopeTotal() { //возвращает полную трудоемкость изготовения
     int scope = 0;
@@ -122,10 +121,10 @@ class ComponentList extends IntList {
       if (reciepts.isEmpty())
         break;
       for (int part : reciepts.get(0)) {
-        Database.DataObject component =  data.getId(part);
-        if (component.reciept!=null) {
-          reciepts.add(component.reciept);
-          scope+=10;//component.scope_of_operation;
+        ComponentList reciept = d.getReciept(part);
+        if (reciept!=null) {
+          reciepts.add(reciept);
+          scope++;//component.scope_of_operation;
         }
       }
       reciepts.remove(0);
@@ -152,8 +151,7 @@ class ComponentList extends IntList {
   }
   void addNewProducts(ComponentList items) {
     for (int part : items) {
-      Database.DataObject component =  data.getId(part);
-      if (component.reciept!=null && !this.hasValue(part))
+      if (d.getReciept(part)!=null && !this.hasValue(part))
         this.append(part);
     }
   }
@@ -162,7 +160,7 @@ class ComponentList extends IntList {
       this.append(part);
   }
   ComponentList getListNotWork() { //возвращает список (чертежей) не находящихся в работе
-    ComponentList projects = new ComponentList(data);
+    ComponentList projects = new ComponentList();
     projects.copy(this);
     for (WorkObject object : world.room.getAllObjects().getDevelopBenches()) {
       DevelopBench develop = (DevelopBench)object;
@@ -173,5 +171,4 @@ class ComponentList extends IntList {
     }
     return projects;
   }
-
 }

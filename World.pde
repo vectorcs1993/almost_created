@@ -14,10 +14,10 @@ class World extends ScaleActiveObject {
     super(1, 32, 512, 384);
     room = new Room(int(512/32), int(384/32));
     size_grid=32;
-    this.speed=speed;
     minSpeed=50;
     maxSpeed=350;
     stepSpeed=100;
+    this.speed=int(map(speed+1, 1, 4, maxSpeed, minSpeed));
     orders = new OrderList();
     this.date = date;
     input=true;
@@ -89,12 +89,12 @@ class World extends ScaleActiveObject {
     }
   }
   void addRandomOrder() {
-    int item = data.items.getRandom(Database.RESHEARCHED).id; //определяет изделие
-    int scope_one =data.getItem(item).scope_of_operation+data.getItem(item).reciept.getScopeTotal();
+    int item = d.getItemRandom(Database.RESHEARCHED); //определяет изделие
+    int scope_one =d.getItem(item).scope_of_operation+d.getReciept(item).getScopeTotal();
     int count = 1+int(random(1000*company.getLevel())/scope_one); //определяет количество  
     int scope_total = count*scope_one;
     int day = constrain((date.getDays(scope_total)), 2, 10);//определяет срок на изготовление 2 дня - минималка
-    float cost_one = data.getItem(item).cost*data.getItem(item).reciept.getCostTotal();  //определяет стоимость предмета 
+    float cost_one = d.getItem(item).cost*d.getReciept(item).getCostTotal();  //определяет стоимость предмета 
     float cost = count*cost_one;  //определяет общую стоимость объектов 
     float exp=scope_one/company.getLevel(); 
     IntList lastId = new IntList();
@@ -103,40 +103,46 @@ class World extends ScaleActiveObject {
     lastId.append(company.closed.getLastId());
     lastId.append(company.failed.getLastId());
     if (cost<=1000*company.getLevel())
-      orders.add(new Order(lastId.max(), item, count, cost, day, getDateForDays(day), getDateForDays(constrain(int(day/2), 1, day)), exp));
+      orders.add(new Order(lastId.max(), item, count, cost, day, getDateForDays(day), getDateForDays(constrain(int(day), 1, day)), exp));
     lastId.clear();
     lastId=null;
   }
   void draw() {
     if (room!=null) {
+      clip(x-getScaleX(), y-getScaleY(), (width+3)*getScaleX(), (height+3)*getScaleY());
       pushMatrix();
       translate(x*getScaleX(), y*getScaleY());
       scale(getScaleX(), getScaleY()); 
       room.draw();
-      if (menuMain.select.event.equals("showBuildings"))
+      if (menuMain.select.event.equals("showBuildings")) {
         room.drawGrid();
-      if (!mainList.isActive() || mainList.select==null) 
-        newObj=null;
-      if (newObj!=null && hover) {
-        pushStyle();
-        tint(white, 100);
-        newObj.draw();
-        if (!room.isPlaceBuilding(newObj, getAbsCoordX(), getAbsCoordY())) {
+        if (!mainList.isActive() || mainList.select==null) 
+          newObj=null;
+        if (newObj!=null && hover) {
+          pushStyle();
+          pushMatrix();
           translate(getAbsCoordX()*size_grid, getAbsCoordY()*size_grid);
-          strokeWeight(4);
-          stroke(red);
-          line(5, 5, size_grid-5, size_grid-5);
-          line(size_grid-5, 5, 5, size_grid-5);
+          tint(white, 100);
+          newObj.draw();
+          popMatrix();
+          if (!room.isPlaceBuilding(newObj, getAbsCoordX(), getAbsCoordY())) {
+            translate(getAbsCoordX()*size_grid, getAbsCoordY()*size_grid);
+            strokeWeight(4);
+            stroke(red);
+            line(5, 5, size_grid-5, size_grid-5);
+            line(size_grid-5, 5, 5, size_grid-5);
+          }
+          popStyle();
         }
-        popStyle();
       }
       popMatrix();
+      noClip();
     }
   }
   public String getObjectInfo() {
     if (room.isHoverLabel()) {
       WorkLabel label = room.getHoverLabel();
-      return data.getItem(label.item).name+" ("+label.count+")";
+      return d.getName("items", label.item)+" ("+label.count+")";
     } else {
       WorkObject object = getObject();
       if (object!=null)
@@ -173,6 +179,7 @@ class World extends ScaleActiveObject {
         menuBench.resetSelect(); 
         menuWorker.resetSelect();
         room.currentObject=object;
+        mainList.select=null;
       } else
         room.currentObject=null;
     }
@@ -188,22 +195,22 @@ class World extends ScaleActiveObject {
               selectCurrentObject();
             else if (menuMain.select.event.equals("showBuildings")) {
               if (mainList.select!=null) {
-                Database.DataObject newObj = data.objects.getId(mainList.select.id);
+                Database.DataObject newObj = d.objects.getId(mainList.select.id);
                 if (newObj.cost<=company.money) {
                   if (room.isPlaceBuilding(newObj, _x, _y)) {
                     if (room.getAllObjects().getNoItemMap().size()<company.buildingLimited) {
-                      WorkObject newObject = data.getNewObject(newObj);
+                      WorkObject newObject = d.getNewObject(newObj);
                       if (newObject!=null) {
                         company.money-=newObj.cost;
-                        printConsole("[РАСХОД] постройка объекта "+newObj.name+": "+getDecimalFormat(newObj.cost)+" $");
+                        printConsole("[РАСХОД] постройка объекта "+d.getName("objects", newObj.id)+": "+getDecimalFormat(newObj.cost)+" $");
                         world.room.object[_x][_y]=newObject;
                       }
                     } else 
-                    dialog.showInfoDialog(data.label.get("message_exceeded_the_limit_of_buildings"));
+                    dialog.showInfoDialog(d.label.get("message_exceeded_the_limit_of_buildings"));
                   } else 
-                  dialog.showInfoDialog(data.label.get("message_it_is_impossible_to_place"));
+                  dialog.showInfoDialog(d.label.get("message_it_is_impossible_to_place"));
                 } else 
-                dialog.showInfoDialog(data.label.get("message_not_enough_funds"));
+                dialog.showInfoDialog(d.label.get("message_not_enough_funds"));
               }
             } else {      //сброс в режим просмотра объектов
               menuMain.setSelect(menuMain.buttons.get(0));
@@ -234,7 +241,6 @@ class World extends ScaleActiveObject {
           node[ix][iy]=new Graph(ix, iy);
         }
       }
-
     }
     void dispose() {
       object = null;
@@ -263,16 +269,12 @@ class World extends ScaleActiveObject {
       }
       return null;
     }
-    int [] getRandomCoord() { //доделать
-      for (int ix=0; ix<sizeX; ix++) {
-        for (int iy=0; iy<sizeY; iy++) {
-          WorkObject current = this.object[ix][iy];
-          if (current!=null) {
-            return new int [] {ix, iy};
-          }
-        }
-      }
-      return null;
+    void moveObject(ItemMap moved, int x, int y) {
+      int tx = moved.getX();
+      int ty = moved.getY();
+      object[x][y]=moved;
+      object[tx][ty]=null;
+      node[tx][ty].solid=false;
     }
     Terminal getObjectAtLabel(WorkLabel label) {
       for (WorkObject part : getAllObjects().getWorkObjects()) {
@@ -314,7 +316,7 @@ class World extends ScaleActiveObject {
     }
     int addItem(int cx, int cy, int id, int count) {
       int [] neighbors = new int [] {59, 49, 61, 71, 48, 50, 72, 70};
-      int stack = data.getItem(id).getStack();
+      int stack = d.getItem(id).getStack();
       for (int i=0; i<neighbors.length; i++) {  //цикл перебирает все соседник клетки в соответствией с матрицей размещения
         int ix=cx+matrixShearch[neighbors[i]][0]; //корректировка координаты х
         int iy=cy+matrixShearch[neighbors[i]][1]; //корректировка координаты у
@@ -344,11 +346,11 @@ class World extends ScaleActiveObject {
           }
         }
       }
-      printConsole("не удалось выгрузить "+data.getItem(id).name+" ("+count+"), нет свободного места");
+      printConsole("не удалось выгрузить "+d.getName("items", id)+" ("+count+"), нет свободного места");
       return count;
     }
-    ComponentList getItemsIsContainers(int filter) {
-      ComponentList list = new ComponentList (data.items);
+    ComponentList getItemsIsContainers() {
+      ComponentList list = new ComponentList ();
       for (WorkObject object : getAllObjects().getObjectsEntryItems()) {
         if (object instanceof Container) {
           if (((Container)object).items.size()>0)
@@ -358,7 +360,7 @@ class World extends ScaleActiveObject {
       return list;
     }
     ComponentList getItemsAll() {
-      ComponentList list = new ComponentList (data.items);
+      ComponentList list = new ComponentList ();
       for (WorkObject object : getAllObjects().getObjectsEntryItems()) {
         if (object instanceof Container) {
           if (((Container)object).items.size()>0)
@@ -369,8 +371,8 @@ class World extends ScaleActiveObject {
       return list;
     }
     ComponentList getItemsIsDeveloped() { //возвращает список предметов уже разработанных (уникальный)
-      ComponentList list = new ComponentList(data.items);
-      for (Database.DataObject object : data.objects) {
+      ComponentList list = new ComponentList();
+      for (Database.DataObject object : d.objects) {
         for (int p : object.products) {
           if (!list.hasValue(p))
             list.append(p);
@@ -379,18 +381,18 @@ class World extends ScaleActiveObject {
       return list;
     }
     ComponentList getListAllowProducts() { //возвращает список доступных для разработки чертежей
-      ComponentList list = new ComponentList(data.items);
+      ComponentList list = new ComponentList();
       ComponentList all_product = getItemsIsDeveloped();  //список изделий уже разработанных
-      all_product.addAll(data.getResources());
-      for (Database.DataObject product : data.items.getProducts()) { //берет список всех изделий
-        if (!all_product.hasValue(product.id)) { //если чертеж еще не разработан
+      all_product.addAll(d.getResources());
+      for (int product : d.getProducts()) { //берет список всех изделий
+        if (!all_product.hasValue(product)) { //если чертеж еще не разработан
           boolean add = true;
-          for (int p : product.reciept.sortItem()) {
+          for (int p : d.getReciept(product).sortItem()) {
             if (!all_product.hasValue(p))
               add=false;
           }
-          if (add && !list.hasValue(product.id))
-            list.append(product.id);
+          if (add && !list.hasValue(product))
+            list.append(product);
         }
       }
       return list;
@@ -404,7 +406,7 @@ class World extends ScaleActiveObject {
     }
     int getShearchInItem(IntList items) {
       for (int part : items) { 
-        if (world.room.getItemsIsContainers(Database.ALL).getComponent(part)!=-1) 
+        if (world.room.getItemsIsContainers().getComponent(part)!=-1) 
           return part;
       }
       return -1;
@@ -499,7 +501,6 @@ class World extends ScaleActiveObject {
             if (!(current instanceof ItemMap))
               node[ix][iy].solid=true;
           } 
-
           popMatrix();
         }
       }

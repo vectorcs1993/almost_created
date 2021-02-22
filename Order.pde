@@ -20,16 +20,16 @@ class Order {
     return "награда: "+cost+" $\n"+
       "опыт: "+exp+"\n"+
       "=================="+"\n"+
-      "количество: "+world.room.getItemsIsContainers(Database.ALL).calculationItem(product)+"/"+count+"\n"+
+      "количество: "+world.room.getItemsIsContainers().calculationItem(product)+"/"+count+"\n"+
       "доступен до: "+allowDate.getDateNotTime()+"\n"+
       "дней на выполнение: "+day+"\n"+
-      "сложность: "+str((data.getItem(product).scope_of_operation+data.getItem(product).reciept.getScopeTotal()))+"\n"+
-      "трудоемкость: "+str(count*(data.getItem(product).scope_of_operation+data.getItem(product).reciept.getScopeTotal()))+"\n";
+      "сложность: "+str((d.getItem(product).scope_of_operation+d.getReciept(product).getScopeTotal()))+"\n"+
+      "трудоемкость: "+str(count*(d.getItem(product).scope_of_operation+d.getReciept(product).getScopeTotal()))+"\n";
   }
   String getDescriptOpen() {
     return "награда: "+cost+" $\n"+
       "опыт: "+exp+"\n"+
-      "количество: "+world.room.getItemsIsContainers(Database.ALL).calculationItem(product)+"/"+count+"\n"+
+      "количество: "+world.room.getItemsIsContainers().calculationItem(product)+"/"+count+"\n"+
       "срок до: "+deadLine.getDateNotTime()+"\n";
   }
   String getDescriptClose() {
@@ -40,7 +40,7 @@ class Order {
     return "штраф: "+refund+" $";
   }
   public boolean isComplete() {
-    return  world.room.getItemsIsContainers(Database.ALL).calculationItem(product)>=count;
+    return  world.room.getItemsIsContainers().calculationItem(product)>=count;
   }
   boolean isFail(Date date) {
     if ((deadLine.month==date.month && deadLine.day>date.day) || deadLine.month>date.month || deadLine.year>date.year)
@@ -56,8 +56,8 @@ class Order {
   }
   void update() {
     cost=getDecimalFormat(cost);
-    int scope = 1+ data.getItem(product).scope_of_operation+data.getItem(product).reciept.getScopeTotal();
-    if (company.getLevel()<=scope/data.getItem(product).scope_of_operation)
+    int scope = 1+ d.getItem(product).scope_of_operation+d.getReciept(product).getScopeTotal();
+    if (company.getLevel()<=scope/d.getItem(product).scope_of_operation)
       exp = scope*count;
     else 
     exp = (scope/company.getLevel())*count;
@@ -89,7 +89,7 @@ class OrderList extends ArrayList <Order> {
       String names="";
       int i=0;
       for (Order order : this) {
-        names+="заказ №"+order.id+": "+data.getItem(order.product).name+" ("+order.count+")";
+        names+="заказ №"+order.id+": "+d.getName("items", order.product)+" ("+order.count+")";
         if (i!=this.size()-1)
           names+="\n";
         else

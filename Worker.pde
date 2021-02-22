@@ -27,7 +27,7 @@ class Worker extends WorkObject {
     target = nextNode = null;
     update = new Timer();
     upgrade = new Timer();
-    items = new ComponentList(data.items);
+    items = new ComponentList();
     this.profession = profession;
     skills_values = createSkillsValues();
     skills_levels = createSkillsLevels();
@@ -39,7 +39,7 @@ class Worker extends WorkObject {
     rotate(getDirectionRad());
     image(sprite, -world.size_grid/2, -world.size_grid/2);
     if (items.size()>0)
-      image(data.getItem(items.get(0)).sprite, -world.size_grid/2, -world.size_grid/2-13);
+      image(d.getItem(items.get(0)).sprite, -world.size_grid/2, -world.size_grid/2-13);
     popStyle();
     popMatrix();
   }
@@ -49,6 +49,7 @@ class Worker extends WorkObject {
     stroke(green);
     strokeWeight(3);
     rect(x*world.size_grid, y*world.size_grid, world.size_grid, world.size_grid);
+    fill(green);
     text(name, x*world.size_grid+getAdjXforPosition(x*world.size_grid, name), getAdjYforPosition(y*world.size_grid));
     popStyle();
   }
@@ -67,7 +68,6 @@ class Worker extends WorkObject {
   String getDescriptList() {
     return "должность: "+getProfessionDescript()+"\n"
       +"зарплата: "+payday+" $/день"+"\n"
-      +"=================\n"
       +"грузоподъемность: "+capacity+"\n"
       +getSkills()+"\n";
   }
@@ -216,6 +216,22 @@ class Worker extends WorkObject {
       }
     }
   }
+    void moveNextPointWithItemMap(ItemMap item) {
+      int tx= x;
+      int ty=y;
+    if (!path.isEmpty()) {
+      nextNode=path.get(path.size()-1);
+      if (!nextNode.solid) { 
+        if (direction!=getDirectionToObject(nextNode.x, nextNode.y)) 
+          setDirection(nextNode.x, nextNode.y);
+        else {
+          moveTo(nextNode);
+          world.room.moveObject(item, tx, ty);
+          path.remove(nextNode);
+        }
+      }
+    }
+  }
   void work(int work) {
     if (max_skill_level>getWorkModificator(work)) {   //если уровень рабочего не превышает максимальный
       int skill =  skills_values.get(work).hashCode()+1;
@@ -225,6 +241,14 @@ class Worker extends WorkObject {
         skills_levels.put(work, level+1);
         printConsole("рабочий "+name+" достиг уровня "+str(level+1)+" набрав "+skills_values.get(work).hashCode()+" опыта в навыке "+getSkillName(work));
       }
+    }
+  }
+  void removeItems() {
+    if (items.size()!=0) {
+       printConsole(name+" выронил компоненты: "+items.getNames());
+    for (int item : items.sortItem())
+        world.room.addItem(x, y, item, items.calculationItem(item));
+      items.clear(); 
     }
   }
   private int getExpForLevel(int level) { //функция возвращает порог опыта для соответствующего ему уровня level

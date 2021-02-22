@@ -57,9 +57,9 @@ class Date {
     minute = int(dateStr.substring(3, 5));
   }
   void newDay() {
-    data.items.putPool(); //восполнение мировых запасов ресурсов
+    d.putPool(); //восполнение мировых запасов ресурсов
     company.setExpenses();
-    printConsole("!!!новый рабочий день!!!");
+    printConsole("новый рабочий день");
     save("autosave");
   }
   void update() {

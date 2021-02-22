@@ -9,21 +9,25 @@ class JobMove extends Job {   //работа по перемещению
     return  worker.x==target.x && worker.y==target.y || exit;
   }
   String getStatus() {
-    return "идет в:"+" "+target.x+","+target.y;
+    return "передвигается";
   }
   void update() {
     if (getPathTo(world.room.node[worker.x][worker.y], target)==null)
       cancel();
     if (worker.path!=null) { //если путь не найден
       if (!worker.path.isEmpty()) { //если путь не завершен
-        if (worker.path.isSolid()) {//если на пути следования появляется препятствие
+        if (worker.path.isSolid()) //если на пути следования появляется препятствие
           worker.moveTo(target.x, target.y);  //путь перестраивается
-        } else
-          worker.moveNextPoint(); //продолжается следование по пути
+        else
+          moveWorker();
       }
     } else
       worker.moveTo(target.x, target.y); //ищет новый путь
   }
+  void moveWorker() {
+    worker.moveNextPoint(); //продолжается следование по пути
+  }
+
   void close() {
     super.close();
     target=null;
@@ -32,6 +36,25 @@ class JobMove extends Job {   //работа по перемещению
     return MOVE;
   }
 }
+class JobMoveWithItemMap extends JobMove {   //работа по перетаскиванию большого предмета
+  ItemMap itemMap;
+  JobMoveWithItemMap(Worker worker, Graph target, ItemMap itemMap) {
+    super(worker, target);
+    this.itemMap=itemMap;
+  }
+  String getStatus() {
+    return "передвигает "+itemMap.name;
+  }
+  void moveWorker() {
+    worker.moveNextPointWithItemMap(itemMap);
+  }
+  void close() {
+    super.close();
+    itemMap=null;
+  }
+}
+
+
 class JobInTerminal extends Job {
   Terminal terminal;
   JobMove moveToTerminal; 
@@ -56,13 +79,13 @@ class JobInTerminal extends Job {
   String getStatus() {
     if (terminal.product!=-1) {
       if (work==SUPPLY)
-        return data.label.get("job_supplies")+" "+data.getItem(terminal.product).name;
+        return d.label.get("job_supplies")+" "+d.getName("items", terminal.product);
       else if (work==DEVELOP)
-        return data.label.get("job_develops")+" "+data.getItem(terminal.product).name;
+        return d.label.get("job_develops")+" "+d.getName("items", terminal.product);
       else if (work== CREATE)
-        return data.label.get("job_created")+" "+data.getItem(terminal.product).name;
+        return d.label.get("job_created")+" "+d.getName("items", terminal.product);
       else if (work== ASSEMBLY)
-        return data.label.get("job_assemble")+" "+data.getItem(terminal.product).name;
+        return d.label.get("job_assemble")+" "+d.getName("items", terminal.product);
       else 
       return "ожидание";
     } else 
@@ -100,7 +123,7 @@ class JobPutInContainerItem extends JobProgress {
     this.container=container;
   }
   String getName() {
-    return data.label.get("job_puts");
+    return d.label.get("job_puts");
   }
   void onAction() {
     for (int i = worker.items.size()-1; i>=0; i--) {
@@ -133,7 +156,7 @@ class JobPutInBenchItem extends JobProgress {
     this.bench=bench;
   }
   String getName() {
-    return data.label.get("job_puts");
+    return d.label.get("job_puts");
   }
   void onAction() {
     bench.components.addAll(worker.items);
@@ -157,7 +180,7 @@ class JobPutInWorkerItemMap extends JobProgress {
     this.needCount=needCount;
   }
   String getName() {
-    return data.label.get("job_takes");
+    return d.label.get("job_takes");
   }
   void onAction() {
     int count_remove = constrain(this.worker.capacity, 1, constrain(itemMap.count, 1, needCount));
@@ -186,7 +209,7 @@ class JobPutInWorkerItem extends JobProgress {
     this.container = container;
   }
   String getName() {
-    return data.label.get("job_takes");
+    return d.label.get("job_takes");
   }
   void onAction() {
     worker.items.setComponents(item, count);
@@ -196,6 +219,32 @@ class JobPutInWorkerItem extends JobProgress {
   void close() {
     super.close();
     container= null;
+  }
+  int getType() {
+    return CARRY;
+  }
+}
+class JobPutInContainerItemMapLarge extends JobProgress {
+  ItemMap itemMap;
+  Container container;
+  JobPutInContainerItemMapLarge(Worker worker, ItemMap itemMap, Container container) {
+    super(worker, container, 0, 10);
+    this.itemMap=itemMap;
+    this.container = container;
+  }
+  String getName() {
+    return d.label.get("job_takes");
+  }
+  void onAction() {
+    container.items.setComponents(itemMap.item, itemMap.count);
+    world.room.removeObject(itemMap);
+  }
+  void close() {
+    super.close();
+    container.job=null;
+    itemMap.job=null;
+    container= null;
+    itemMap= null;
   }
   int getType() {
     return CARRY;
@@ -212,7 +261,7 @@ class JobCarry extends Job {
     return exit;
   }
   String getStatus() {
-    return data.label.get("job_transfers");
+    return d.label.get("job_transfers");
   }
   void update() {
     this.worker.work(Job.CARRY);
@@ -264,9 +313,7 @@ class JobCarry extends Job {
   }
   void cancel() {
     if (inWorker.isComplete()) {
-      for (int item : worker.items.sortItem())
-        world.room.addItem(this.worker.x, this.worker.y, item, worker.items.calculationItem(item));
-      this.worker.items.clear();
+      worker.removeItems();
     }
     super.cancel();
   }
@@ -286,6 +333,45 @@ class JobCarry extends Job {
     return CARRY;
   }
 }
+class JobDrag extends JobCarry {
+  ItemMap itemMap;
+  Container container;
+  JobDrag(Worker worker, ItemMap itemMap, Container container) {
+    super(worker);
+    this.itemMap=itemMap;
+    this.itemMap.job=this;
+    Graph targetItemMap = getNeighboring(world.room.node[itemMap.getX()][itemMap.getY()], null).getGraphFreePath(worker.x, worker.y);
+    this.container=container;
+    this.container.job=this;
+    Graph targetContainer = getNeighboring(world.room.node[container.getX()][container.getY()], null).getGraphFreePath(worker.x, worker.y);
+    moveToObject = new JobMoveWithItemMap(worker, targetContainer, itemMap);
+    move = moveFromObject = new JobMove(worker, targetItemMap);
+    inWorker = new JobPutInWorkerItemMap (worker, itemMap, worker.capacity);
+    inObject = new JobPutInContainerItemMapLarge (worker, itemMap, container);
+  }
+  void update() {
+    this.worker.work(Job.CARRY);
+    if (!move.isComplete())
+      move.update();
+    else {
+      if (move==moveFromObject) {
+        if (!inWorker.isComplete()) 
+          inWorker.process=inWorker.processMax;
+        else {
+          move= moveToObject;
+          worker.moveTo(move.target.x, move.target.y);
+        }
+      } else if (move==moveToObject) {
+        if (!inObject.isComplete()) 
+          inObject.update();
+        else
+          exit=true;
+      }
+    }
+    if (getPathTo(world.room.node[worker.x][worker.y], move.target)==null)
+      cancel();
+  }
+}
 class JobCarryItemMap extends JobCarry {
   ItemMap itemMap;
   Container container;
@@ -303,7 +389,7 @@ class JobCarryItemMap extends JobCarry {
     inObject = new JobPutInContainerItem (worker, itemMap.item, container);
   }
   String getStatus() {
-    return super.getStatus()+" "+itemMap.name+" в "+container.name+"\n("+getDescript()+")";
+    return super.getStatus()+" "+itemMap.name+" в "+container.name+" ("+getDescript()+")";
   }
   void close() {
     super.close();
@@ -334,8 +420,8 @@ class JobCarryItemForBench extends JobCarry {
     inObject = new JobPutInBenchItem (worker, item, bench);
   }
   String getStatus() {
-    return super.getStatus()+" "+data.getItem(item).name+" из "+container.name+" в "+bench.name+
-      "\n("+getDescript()+")";
+    return super.getStatus()+" "+d.getName("items", item)+" из "+container.name+" в "+bench.name+
+      " ("+getDescript()+")";
   }
   void close() {
     super.close();
@@ -363,8 +449,7 @@ class JobCarryItemMapForBench extends JobCarry {
     inObject = new JobPutInBenchItem (worker, item, bench);
   }
   String getStatus() {
-    return super.getStatus()+" "+data.getItem(item).name+" в "+bench.name+
-      "\n("+getDescript()+")";
+    return super.getStatus()+" "+d.getName("items", item)+" в "+bench.name+" ("+getDescript()+")";
   }
   void close() {
     super.close();
@@ -385,13 +470,13 @@ class JobRepair extends Job {
     moveToObject = new JobMove(worker, targetBench);
   }
   boolean isComplete() {
-    float maxHp = data.objects.getId(terminal.id).maxHp;
+    float maxHp = d.objects.getId(terminal.id).maxHp;
     if (terminal.hp>=maxHp)
-      printConsole("объект "+terminal.name+" отремонтирован");
+      printConsole("объект "+terminal.name+" восстановлен");
     return terminal.hp>=maxHp;
   }
   String getStatus() {
-    return data.label.get("job_repaired")+" "+terminal.name;
+    return d.label.get("job_repaired")+" "+terminal.name;
   }
   void update() {
     if (!moveToObject.isComplete())
@@ -399,7 +484,7 @@ class JobRepair extends Job {
     else {
       terminal.hp++;
       this.worker.work(Job.REPAIR);
-      constrain(terminal.hp, 0, data.objects.getId(terminal.id).maxHp);
+      constrain(terminal.hp, 0, d.objects.getId(terminal.id).maxHp);
       this.worker.setDirection(terminal.getX(), terminal.getY());
     }
   }

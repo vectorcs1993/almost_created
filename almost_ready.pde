@@ -3,9 +3,11 @@ import uibooster.*;
 import controlP5.*;
 import java.util.Map;
 import processing.sound.*;
+import de.bezier.data.sql.*;
+import java.util.Iterator;
+Database d;
 
-
-
+final int ITEMS =0, OBJECTS=1;
 int _sizeX=800;
 int _sizeY=600;
 World world;
@@ -14,6 +16,7 @@ long usedMB = 0;
 Runtime rt = Runtime.getRuntime();
 SoundFile ambient;
 
+boolean[] keys = new boolean [255];
 PImage floor, no_data, lock;
 color blue = color(0, 0, 255);                                                                               //задание цветовых констант
 color red = color(255, 0, 0);
@@ -30,14 +33,15 @@ void settings() {
   noSmooth();
 }
 void setup() {
+    d = new Database();
   surface.setIcon(loadImage("data/sprites/icon.png"));
-  setupDatabase();
   surface.setResizable(true);
-  surface.setTitle(data.label.get("title"));
+  surface.setTitle(d.label.get("title"));
   floor = loadImage("data/sprites/floor.png");
   spr_worker= loadImage("data/sprites/worker/worker.png");
   lock= loadImage("data/sprites/hud/hud_lock.png");
   no_data = loadImage("data/sprites/no_data.png");
+
   dialog = new UiBooster();
   Interactive.make(this);
   interfaces = new ControlP5(this);
@@ -66,8 +70,14 @@ void draw() {
     , 712, 20);
 }
 void keyPressed() {
-  int id = data.items.get(int(random(0, data.items.size()-1))).id;
+  keys[keyCode] = true;
+  int id = d.items.get(int(random(0, d.items.size()-1))).id;
   world.room.addItem(world.getAbsCoordX(), world.getAbsCoordY(), id, 1);
+  //print(d.getReciept(0));
+}
+
+void keyReleased() {
+  keys[keyCode] = false;
 }
 void exit() {
   world.pause=true;
@@ -97,10 +107,10 @@ void save(String nameFile) {
     //глобальные данные
     JSONObject global = new JSONObject();
     global.setString("date", world.date.getDate());
-    global.setInt("speed", world.speed);
+    global.setInt("speed", buttonsSpeed.select());
     JSONObject global_pool = new JSONObject();
-    for (int res : data.getResources())
-      global_pool.setInt(str(res), data.getItem(res).pool);
+    for (int res : d.getResources())
+      global_pool.setInt(str(res), d.getItem(res).pool);
     global.setJSONObject("pool", global_pool);
     JSONObject global_objects = new JSONObject();
     JSONArray global_objects_containers = new JSONArray ();
@@ -112,9 +122,16 @@ void save(String nameFile) {
       if (object instanceof Container) {
         Container container = (Container)object;
         JSONObject object_container = new JSONObject();
+        object_container.setInt("id", container.id);
         object_container.setInt("x", container.getX());
         object_container.setInt("y", container.getY());
         object_container.setString("name", container.name);
+        JSONArray container_items = new JSONArray();   
+        if (container.items.size()>0) {
+          for (int i : container.items) 
+            container_items.append(i);
+        }
+        object_container.setJSONArray("items", container_items);
         global_objects_containers.append(object_container);
       } else if (object instanceof Terminal) {
         Terminal terminal = (Terminal)object;
@@ -131,7 +148,7 @@ void save(String nameFile) {
           JSONArray workbench_products = new JSONArray();
           if (terminal.products.size()>0) {
             for (int i : terminal.products) 
-              workbench_products.append(i);      
+              workbench_products.append(i);
           }
           object_terminal.setJSONArray("products", workbench_products);
           global_objects_productions.append(object_terminal);
@@ -234,14 +251,14 @@ void save(String nameFile) {
 void newGame() {
   company.addWorker("Сергей Иванов", 6);
   company.addWorker("Алексей Михайлов", 6);
-  world.room.object[3][3] = new Terminal(WorkObject.TERMINAL, data.objects.getId(WorkObject.TERMINAL).name, 10);
-  world.room.object[4][4] = new Workbench(WorkObject.WORKBENCH, data.objects.getId(WorkObject.WORKBENCH).name, 10);
-  world.room.object[7][4] = new Workbench(WorkObject.FOUNDDRY, data.objects.getId(WorkObject.FOUNDDRY).name, 10);
-  world.room.object[8][4] = new Workbench(WorkObject.WORKSHOP_MECHANICAL, data.objects.getId(WorkObject.WORKSHOP_MECHANICAL).name, 10);
-  world.room.object[5][4] = new DevelopBench(WorkObject.DEVELOPBENCH, data.objects.getId(WorkObject.DEVELOPBENCH).name, 10);
-  world.room.object[6][4] = new Container(0, data.objects.getId(WorkObject.CONTAINER).name, 400, 1, 20);
+  world.room.object[3][3] = new Terminal(WorkObject.TERMINAL, d.getName("objects", WorkObject.TERMINAL), 10);
+  world.room.object[4][4] = new Workbench(WorkObject.WORKBENCH, d.getName("objects", WorkObject.WORKBENCH), 10);
+  world.room.object[7][4] = new Workbench(WorkObject.FOUNDDRY, d.getName("objects", WorkObject.FOUNDDRY), 10);
+  world.room.object[8][4] = new Workbench(WorkObject.WORKSHOP_MECHANICAL, d.getName("objects", WorkObject.WORKSHOP_MECHANICAL), 10);
+  world.room.object[5][4] = new DevelopBench(WorkObject.DEVELOPBENCH, d.getName("objects", WorkObject.DEVELOPBENCH), 10);
+  world.room.object[6][4] = new Container(0, d.getName("objects", WorkObject.CONTAINER));
   for (int i = 0; i<53; i++) {
-    int id = data.getResources().get(int(random(0, data.getResources().size())));
+    int id = d.getResources().get(int(random(0, d.getResources().size())));
     world.room.addItem(int(random(0, world.room.sizeX-1)), int(random(0, world.room.sizeY-1)), id, int(random(1, 50)));
   }
 }
@@ -255,9 +272,10 @@ void load() {
   JSONObject global = file_struct.getJSONObject("global");
   JSONObject global_company = file_struct.getJSONObject("company");
   world = new World(getDateFromString(global.getString("date")), global.getInt("speed"));
+  buttonsSpeed.setSelect(buttonsSpeed.buttons.get(global.getInt("speed")));
   company = new Company(global_company.getString("name"), global_company.getInt("exp"), global_company.getFloat("money") );
   for (java.lang.Object s : global.getJSONObject("pool").keys()) //загрузка пула
-    data.getItem(int(s.toString())).pool=global.getJSONObject("pool").getInt(s.toString());
+    d.getItem(int(s.toString())).pool=global.getJSONObject("pool").getInt(s.toString());
   //загрузка профессий
   company.professions.clear(); //удаление должности по умолчанию, т.к. ее могли изменить
   JSONArray company_professions = global_company.getJSONArray("professions");  
@@ -285,7 +303,10 @@ void load() {
   JSONArray objects_containers = global.getJSONObject("objects").getJSONArray("containers");
   for (int i = 0; i<objects_containers.size(); i++) {
     JSONObject work_object = objects_containers.getJSONObject(i);
-    world.room.object[work_object.getInt("x")][work_object.getInt("y")] = new Container(WorkObject.CONTAINER, work_object.getString("name"), 400, 1, 20);
+    Container container = new Container(work_object.getInt("id"), work_object.getString("name"));  
+    for (int item : work_object.getJSONArray("items").getIntArray())
+      container.items.append(item);
+    world.room.object[work_object.getInt("x")][work_object.getInt("y")] = container;
   }
   JSONArray objects_terminals = global.getJSONObject("objects").getJSONArray("terminals");
   for (int i = 0; i<objects_terminals.size(); i++) {
@@ -305,7 +326,7 @@ void load() {
     object.progress=work_object.getInt("progress");
     world.room.object[work_object.getInt("x")][work_object.getInt("y")] = object;
     for (int product : work_object.getJSONArray("products").getIntArray())
-    object.products.append(product);
+      object.products.append(product);
   }
   JSONArray objects_developed = global.getJSONObject("objects").getJSONArray("developed");
   for (int i = 0; i<objects_developed.size(); i++) {

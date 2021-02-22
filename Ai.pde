@@ -106,7 +106,7 @@ class GraphList extends ArrayList <Graph> {
     }
     return false;
   }
-  public Graph getGraphFreePath(int x, int y) { //возвращает первый граф из списка до которого успешно проложен путь
+  Graph getGraphFreePath(int x, int y) { //возвращает первый граф из списка до которого успешно проложен путь
     for (Graph part : this) {
       if (getPathTo(world.room.node[x][y], world.room.node[part.x][part.y])!=null) 
         return part;
@@ -135,16 +135,6 @@ boolean getDiagonal (int startX, int startY, int endX, int endY) {
     return false;
   else 
   return true;
-}
-boolean isNeighbor(int x1, int y1, int x2, int y2) {
-  int [] neighbor = getArrayDirection(x1, y1, x2, y2);
-  for (int i=0; i<neighbor.length; i++) {
-    int tempX=constrain(x1+matrixShearch[neighbor[i]][0], 0, world.room.sizeX-1);
-    int tempY=constrain(y1+matrixShearch[neighbor[i]][1], 0, world.room.sizeY-1);
-    if (x2==tempX && y2==tempY)
-      return true;
-  }
-  return false;
 }
 int [] getArrayDirection(int x1, int y1, int x2, int y2) {
   if (getDiagonal(x1, y1, x2, y2)) {
@@ -203,10 +193,12 @@ GraphList getNeighboring(Graph objectThis, Graph target) {
   else 
   neighbor=new int [] {59, 48, 70, 49, 71, 50, 72, 61};
   for (int i=0; i<neighbor.length; i++) {
-    int tempX=constrain(objectThis.x+matrixShearch[neighbor[i]][0], 0, world.room.sizeX-1);
-    int tempY=constrain(objectThis.y+matrixShearch[neighbor[i]][1], 0, world.room.sizeY-1);
-    if (!world.room.node[tempX][tempY].solid && getApplyDiagonalMove(tempX, tempY, objectThis.x, objectThis.y))
-      tempList.add(world.room.node[tempX][tempY]);
+    int tempX=objectThis.x+matrixShearch[neighbor[i]][0];
+    int tempY=objectThis.y+matrixShearch[neighbor[i]][1];
+    if (tempX>=0 && tempX<world.room.sizeX && tempY>=0 && tempY<world.room.sizeY) {
+      if (!world.room.node[tempX][tempY].solid && getApplyDiagonalMove(tempX, tempY, objectThis.x, objectThis.y))
+        tempList.add(world.room.node[tempX][tempY]);
+    }
   }
   return tempList;
 }

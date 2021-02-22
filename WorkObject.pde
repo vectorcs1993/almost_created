@@ -4,13 +4,13 @@ abstract class WorkObject {
   String name;
   int direction;
   static final int CONTAINER = 0, TERMINAL = 14, WORKBENCH=16, DEVELOPBENCH =17, FOUNDDRY =18, SAW_MACHINE=19, WORKSHOP_MECHANICAL =21, 
-    EXTRUDER=22, WORKAREA =23,  GARAGE =24;
+    EXTRUDER=22, WORKAREA =23, GARAGE =24;
   Job job;
   WorkObject(int id, String name) {
     this.id=id; 
     this.name=name;
     if (id!=-1)
-      sprite=data.objects.getId(id).sprite;
+      sprite=d.objects.getId(id).sprite;
     job=null;
     direction=0;
   }
@@ -139,8 +139,8 @@ class ItemMap extends WorkObject {
     super(-1, null);
     this.item=item;
     this.count=count;
-    sprite=data.getItem(item).sprite;
-    name=data.getItem(item).name;
+    sprite=d.getItem(item).sprite;
+    name=d.getName("items", item);
   }
   String getDescript() {
     return "предмет";
@@ -165,8 +165,8 @@ class Terminal extends WorkObject {
     label=null;
     progress=0;
     product=-1;
-    products = new ComponentList(data.items);
-    products = data.objects.getId(id).products;
+    products = new ComponentList();
+    products = d.objects.getId(id).products;
     this.hp=hp;
     wear=0.1;
     speed=60;
@@ -185,7 +185,7 @@ class Terminal extends WorkObject {
     return blue;
   }
   String getDescriptTask() {
-    Database.DataObject item = data.getItem(mainList.select.id);
+    Database.DataObject item = d.getItem(mainList.select.id);
     if (item.pool>0) {
       return "количество: "+count_operation+"\n"
         +"цена: "+getDecimalFormat(count_operation*item.getCostForPool())+" $\n"
@@ -195,9 +195,9 @@ class Terminal extends WorkObject {
   }
   String getProductDescript() {
     if (label==null)
-      return "доставка товара: "+data.getItem(product).name+"\nпроцесс: "+progress+"/"+getMaxProgress()+"";
+      return "доставка товара: "+d.getName("items", product)+"\nпроцесс: "+progress+"/"+getMaxProgress()+"";
     else 
-    return data.getItem(product).name+" доставлен";
+    return d.getName("items", product)+" доставлен";
   }
   protected float getTick() {
     return speed;
@@ -209,22 +209,24 @@ class Terminal extends WorkObject {
     if (product!=-1) {
       if (hp>0) {
         if (label==null) {
-          if (this instanceof Workbench && ((Workbench)this).components.size()>0)
-            ((Workbench)this).components.removeItems(data.getItem(product).reciept.getMult(count_operation));  //списание компонентов для изготовления
-          int job_modificator = job.worker.getWorkModificator(data.objects.getId(id).type);
+          if (this instanceof Workbench && ((Workbench)this).components.size()>0) {
+            ((Workbench)this).tempComponents.addAll(((Workbench)this).components);
+            ((Workbench)this).components.clear();
+          }
+          int job_modificator = job.worker.getWorkModificator(d.objects.getId(id).type);
           progress+=job_modificator;
           hp-=wear;
           if (progress>=getMaxProgress()) {
             if (this instanceof DevelopBench) {
-              printConsole("чертеж "+data.getItem(product).name+" разработан");
-              printConsole("объект "+data.objects.getId(data.getItem(product).work_object).name+": список доступных изделий обновлен");
-              data.objects.getId(data.getItem(product).work_object).products.append(product);
+              printConsole("чертеж "+d.getName("items", product)+" разработан");
+              printConsole("объект "+d.getName("objects", d.getItem(product).work_object)+": список доступных изделий обновлен");
+              d.objects.getId(d.getItem(product).work_object).products.append(product);
               removeLabel();
             } else {
               if (this instanceof Workbench) 
-                printConsole("предмет "+data.getItem(product).name+" ("+count_operation+") изготовлен");
+                printConsole("предмет "+d.getName("items", product)+" ("+count_operation+") изготовлен");
               else
-                printConsole("ресурс "+data.getItem(product).name+" ("+count_operation+") доставлен");
+                printConsole("ресурс "+d.getName("items", product)+" ("+count_operation+") доставлен");
               int [] place = world.room.getAbsCoordObject(this);
               int count=world.room.addItem(place[0], place[1], product, count_operation);
               if (count<=0)
@@ -241,81 +243,101 @@ class Terminal extends WorkObject {
           }
         }
       } else 
-        job.exit=true;
+      job.exit=true;
     }
   }
   void update() {
     speed=constrain(speed, 0, 1000);
-    hp=constrain(hp, 0, data.objects.getId(id).maxHp);
+    hp=constrain(hp, 0, d.objects.getId(id).maxHp);
     wear=constrain(wear, 0.01, 0.5);
-  }
-  void removeLabel() {
-    if (label!=null) {
-      label.setActive(false);
-      label=null;
-    } 
-    product=-1;
-    progress=0;
-    count_operation=0;
   }
   public void draw() {
     super.draw();
     if (product!=-1) {
-      drawBottomSprite(data.getItem(product).sprite);
+      drawBottomSprite(d.getItem(product).sprite);
       if (progress>0)
         drawStatus(5, progress, getMaxProgress(), green, red);
     }
-    int maxHp=data.objects.getId(id).maxHp;
+    int maxHp=d.objects.getId(id).maxHp;
     if (hp<maxHp)
       drawStatus(9, hp, maxHp, blue, red);
   }
   public String getDescript() {
     return name+"\n"+
-      "состояние"+": "+getDecimalFormat(hp)+"/"+data.objects.getId(id).maxHp+"\n"+
-      "требуемый навык"+": "+getSkillName(data.objects.getId(id).type)+
+      "состояние"+": "+getDecimalFormat(hp)+"/"+d.objects.getId(id).maxHp+"\n"+
+      "требуемый навык"+": "+getSkillName(d.objects.getId(id).type)+
       getIsJobLock();
   }
   protected String getCharacters() {
     return "скорость"+": "+map(speed, 1000, 0, 0, 100)+"\n"+
       "износостойкость"+": "+map(wear, 0.01, 0.5, 100, 0);
   }
+  void removeLabel() {
+    if (label!=null) {
+      label.setActive(false);
+      label=null;
+    }
+    resetProduct();
+  }
+  void refund() {
+    Database.DataObject product = d.getItem(mainList.select.id);
+    product.pool+=count_operation; 
+    company.money+=refund; //возврат денежных средств
+    printConsole("[ПОСТУПЛЕНИЕ] возврат денежных средств: "+refund+" $");
+  }
+  void resetProduct() { //сброс настроек для производства/разработки/покупки
+    product=-1;
+    progress=0;
+    count_operation=0;
+  }
+  void cancelProduct() {
+    printConsole("объект "+name+" задача отменена");
+    removeLabel();
+    if (job!=null) {
+      job.worker.job=null;
+      job.worker.removeItems();
+      job.worker=null;
+      job.close();
+    }
+  }
 }
 class Workbench extends Terminal {
-  private ComponentList components;
+  private ComponentList components, tempComponents;
 
   Workbench (int id, String name, float hp) {
     super(id, name, hp);
-    components = new ComponentList(data.items);
+    components = new ComponentList();
+    tempComponents = new ComponentList();
   }
   color getColor() {
     return black;
   }
   int getMaxProgress() {
-    return data.getItem(product).scope_of_operation*count_operation;
+    return d.getItem(product).scope_of_operation*count_operation;
   }
   String getDescriptTask() {
-    Database.DataObject product = data.getItem(mainList.select.id);
+    Database.DataObject product = d.getItem(mainList.select.id);
     return "количество: "+count_operation+"\n"
-      +"трудоёмкость: "+count_operation*(product.scope_of_operation+product.reciept.getScopeTotal())+"\n";
+      +"трудоёмкость: "+count_operation*(product.scope_of_operation+d.getReciept(product.id).getScopeTotal())+"\n";
   }
   String getProductDescript() {
     if (label==null)
-      return "изделие: "+data.getItem(product).name;
+      return "изделие: "+d.getName("items", product);
     else 
-    return data.getItem(product).name+" изготовлено";
+    return d.getName("items", product)+" изготовлено";
   }        
   String getDescriptProgress() {    
     return "процесс: "+progress+"/"+getMaxProgress();
   }
   void removeLabel() {
     super.removeLabel();
-    finish();
+    tempComponents.clear();
   }
   IntList getNeedItems() {
     IntList needItems = new IntList();
     if (product!=-1 && label==null) {
-      for (int part : data.getItem(product).reciept.sortItem()) {
-        if (components.calculationItem(part)<data.getItem(product).reciept.calculationItem(part)*count_operation) 
+      for (int part : d.getReciept(product).sortItem()) {
+        if (components.calculationItem(part)<d.getReciept(product).calculationItem(part)*count_operation) 
           needItems.append(part);
       }
     }
@@ -325,21 +347,54 @@ class Workbench extends Terminal {
     if (product!=-1) {
       if (progress>0)
         return true;
-      for (int part : data.getItem(product).reciept.sortItem()) {
-        if (components.calculationItem(part)<data.getItem(product).reciept.calculationItem(part)*count_operation) 
+      for (int part : d.getReciept(product).sortItem()) {
+        if (components.calculationItem(part)<d.getReciept(product).calculationItem(part)*count_operation) 
           return false;
       }
     }
     return true;
   }
-  void finish() {  
+  boolean isAllowWorkCreate() {
+    for (int part : d.getReciept(product).sortItem()) {
+      if (tempComponents.calculationItem(part)<d.getReciept(product).calculationItem(part)*count_operation) 
+        return false;
+    }
+    return true;
+  }
+  void cancelProduct() {
+    if (components.size()!=0) 
+      goneComponents();
+    else
+      halfFinish();
+    super.cancelProduct();
+  }
+  void goneComponents() { //выгружает хранилище компонентов на карту
     for (int part : components.sortItem()) 
       world.room.addItem(this.getX(), this.getY(), part, components.calculationItem(part));
     components.clear();
   }
+  void removeComponents() { //выгружает буфер компонентов на карту
+    for (int part : tempComponents.sortItem()) 
+      world.room.addItem(this.getX(), this.getY(), part, tempComponents.calculationItem(part));
+    tempComponents.clear();
+  }
+  void halfFinish() {   //выгружает неполный буфер компонентов на карту, если таков имеется
+    ComponentList losses = new ComponentList ();
+    tempComponents.shuffle();
+    int i = 0;
+    int cut = ceil(tempComponents.size()/2);
+    while (i<cut) {
+      losses.append(tempComponents.get(0));
+      tempComponents.remove(0);
+      i++;
+    }
+    removeComponents();
+    if (losses.size()>0)
+      printConsole("следующие компоненты потеряны: "+losses.getNames());
+  }
   int getNeedItemCount(int id) {
     if (product!=-1 && label==null) {
-      return data.getItem(product).reciept.calculationItem(id)*count_operation-components.calculationItem(id);
+      return d.getReciept(product).calculationItem(id)*count_operation-components.calculationItem(id);
     } else
       return -1;
   }
@@ -353,42 +408,51 @@ class DevelopBench extends Terminal {
     return gray;
   }
   int getMaxProgress() {
-    return constrain(data.getItem(product).reciept.getScopeTotal(), 5, 10000);
+    return d.getItem(product).getScope();
   }
   String getDescriptTask() {
     String difficultyText="";
-    int difficulty = data.getItem(mainList.select.id).reciept.getScopeTotal();
+    int difficulty = d.getItem(mainList.select.id).getScope();
     if (difficulty!=0)
-      difficultyText = "сложность: "+difficulty+"\n";
-    return difficultyText+"изготавливается: "+data.objects.getId(data.getItem(mainList.select.id).work_object).name;
+      difficultyText = "сложность: "+difficulty+"\n";      
+    return difficultyText+"изготавливается: "+d.getName("objects",d.getItem(mainList.select.id).work_object);
   }
   String getProductDescript() {
     if (label==null)
-      return "чертеж на: "+data.getItem(product).name+"\nпроцесс: "+progress+"/"+getMaxProgress()+"\n";
+      return "чертеж на: "+d.getName("items", product)+"\nпроцесс: "+progress+"/"+getMaxProgress()+"\n";
     else 
-    return data.getItem(product).name+" разработан";
+    return d.getName("items", product)+" разработан";
   }
 }
 
 class Container extends WorkObject {
   int capacity, weightMax, weightMin;
   ComponentList items;
+  final static int NORMAL=500, LARGE=1000;
 
-  Container (int id, String name, int capacity, int weightMin, int weightMax) {
+  Container (int id, String name) {
     super(id, name);
-    items = new ComponentList(data.items);
-    this.capacity = capacity;
-    this.weightMax=weightMax;
-    this.weightMin=weightMin;
+    items = new ComponentList();
+    if (id==CONTAINER) {
+      capacity=NORMAL;
+      weightMax=10;
+      weightMin=1;
+    } else if (id==GARAGE) {
+      capacity=LARGE;
+      weightMax=100;
+      weightMin=10;
+    }
   }
   public String getDescript() {
     return name+"\n"+
-      "вместимость: "+getCapacity()+"/"+capacity+getIsJobLock();
+      "вместимость: "+getCapacity()+"/"+capacity+"\n"+
+      "минимальный вес: "+weightMin+"\n"+
+      "максимальный вес: "+weightMax+getIsJobLock();
   }
   public int getCapacity() {
     int capacity = 0;
     for (int item : items) 
-      capacity+=data.getItem(item).weight;
+      capacity+=d.getItem(item).weight;
     return capacity;
   }
   public boolean isFreeCapacity() {
@@ -472,6 +536,18 @@ class WorkObjectList extends ArrayList <WorkObject> {
     }
     return null;
   }
+  WorkObjectList getObjectsSortNearest(Worker worker) {  //возвращает объекты начиная с самого ближайшего
+    WorkObjectList objects= new WorkObjectList();
+    WorkObjectList temp= new WorkObjectList();
+    for (WorkObject object : this)
+      temp.add(object);
+    while (!temp.isEmpty()) {
+      WorkObject  obj = temp.getNearestObject(worker.x, worker.y);
+      temp.remove(obj);
+      objects.add(obj);
+    }
+    return objects;
+  }
   WorkObjectList getObjectsAllowMove(Worker worker) {  //возвращает объекты для которых разрешено перемещение
     WorkObjectList objects= new WorkObjectList();
     for (WorkObject object : this) {
@@ -480,7 +556,7 @@ class WorkObjectList extends ArrayList <WorkObject> {
         if (place[0]>=0 && place[1]>=0 && place[0]<world.room.sizeX && place[1]<world.room.sizeY) {
           if (getPathTo(world.room.node[worker.x][worker.y], world.room.node[place[0]][place[1]])!=null) 
             objects.add(object);
-        }
+       }
       } else {
         int [] xyObject = world.room.getAbsCoordObject(object);
         GraphList neighbor = getNeighboring(world.room.node[xyObject[0]][xyObject[1]], null);
@@ -493,12 +569,12 @@ class WorkObjectList extends ArrayList <WorkObject> {
     }
     return objects;
   }
-    WorkObjectList getObjectsWorking() {  //возвращает объекты незаблокированные другой работой
+  WorkObjectList getObjectsWorking() {  //возвращает объекты незаблокированные другой работой
     WorkObjectList objects= new WorkObjectList();
     for (WorkObject object : this) {
       if (object instanceof Terminal) {
         if (((Terminal)object).hp>0)
-        objects.add(object);
+          objects.add(object);
       }
     }
     return objects;
@@ -515,7 +591,18 @@ class WorkObjectList extends ArrayList <WorkObject> {
     WorkObjectList objects= new WorkObjectList();
     for (WorkObject object : this) {
       if (object instanceof ItemMap) {
-        if (data.getItem(((ItemMap)object).item).weight<=weight)  
+        if (d.getItem(((ItemMap)object).item).weight<=weight)  
+          objects.add(object);
+      }
+    }
+    return objects;
+  }
+  WorkObjectList  getContainerForWeight(int weight) {  //возвращает список контейнеров в соответствии с требуемым весом
+    WorkObjectList objects= new WorkObjectList();
+    for (WorkObject object : this) {
+      if (object instanceof Container) {
+        Container container = (Container)object;
+        if (container.weightMin<=weight && weight<=container.weightMax)  
           objects.add(object);
       }
     }
@@ -535,7 +622,7 @@ class WorkObjectList extends ArrayList <WorkObject> {
     WorkObjectList objects = new WorkObjectList();
     for (WorkObject object : this) {
       if (object instanceof Terminal) {
-        if (((Terminal)object).hp< data.objects.getId(object.id).maxHp)
+        if (((Terminal)object).hp< d.objects.getId(object.id).maxHp)
           objects.add(object);
       }
     }
@@ -588,7 +675,7 @@ class WorkObjectList extends ArrayList <WorkObject> {
     WorkObjectList objects = new WorkObjectList();
     for (WorkObject object : this) {
       if (object instanceof Workbench) {
-        if (data.objects.getId(((Workbench)object).id).type==type)
+        if (d.objects.getId(((Workbench)object).id).type==type)
           objects.add(object);
       }
     }
